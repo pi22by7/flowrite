@@ -18,6 +18,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   List<TextEditingController> _controllers = [];
   List<FocusNode> _focusNodes = [];
+  List<FocusNode> _keyboardFocusNodes = [];
   List<int> _syllableCounts = [];
   int _currentLine = 0;
 
@@ -33,12 +34,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
     _controllers = [];
     _focusNodes = [];
+    _keyboardFocusNodes = [];
     _syllableCounts = [];
 
     for (int i = 0; i < lines.length; i++) {
       final index = i; // Capture index
       final controller = TextEditingController(text: lines[i]);
       final focusNode = FocusNode();
+      final keyboardFocusNode = FocusNode();
 
       controller.addListener(() => _onLineChanged(index));
       focusNode.addListener(() {
@@ -51,6 +54,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
       _controllers.add(controller);
       _focusNodes.add(focusNode);
+      _keyboardFocusNodes.add(keyboardFocusNode);
       _syllableCounts.add(_syllableService.countSyllables(lines[i]));
     }
 
@@ -70,6 +74,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final index = _controllers.length; // Capture current index before adding
     final controller = TextEditingController();
     final focusNode = FocusNode();
+    final keyboardFocusNode = FocusNode();
 
     controller.addListener(() => _onLineChanged(index));
     focusNode.addListener(() {
@@ -83,6 +88,7 @@ class _EditorScreenState extends State<EditorScreen> {
     setState(() {
       _controllers.add(controller);
       _focusNodes.add(focusNode);
+      _keyboardFocusNodes.add(keyboardFocusNode);
       _syllableCounts.add(0);
     });
 
@@ -112,6 +118,9 @@ class _EditorScreenState extends State<EditorScreen> {
     for (var focusNode in _focusNodes) {
       focusNode.dispose();
     }
+    for (var focusNode in _keyboardFocusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
@@ -125,7 +134,24 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
+  void _handleBackspaceKey(int index) {
+    if (_controllers.length > 1 && _controllers[index].text.isEmpty) {
+      final controller = _controllers.removeAt(index);
+      final focusNode = _focusNodes.removeAt(index);
+      final keyboardFocusNode = _keyboardFocusNodes.removeAt(index); // Add this line
+      _syllableCounts.removeAt(index);
 
+      controller.dispose();
+      focusNode.dispose();
+      keyboardFocusNode.dispose(); // Add this line
+
+      if (index > 0) {
+        FocusScope.of(context).requestFocus(_focusNodes[index - 1]);
+      }
+
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,24 +174,35 @@ class _EditorScreenState extends State<EditorScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextField(
-                  controller: _controllers[index],
-                  focusNode: _focusNodes[index],
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    border: InputBorder.none,
+                child: KeyboardListener(
+                  focusNode: _keyboardFocusNodes[index],
+                  onKeyEvent: (KeyEvent event) {
+                    if (event is KeyDownEvent &&
+                        event.logicalKey == LogicalKeyboardKey.backspace &&
+                        _controllers[index].text.isEmpty) {
+                      _handleBackspaceKey(index);
+                    }
+                  },
+                  child: TextField(
+                    controller: _controllers[index],
+                    focusNode: _focusNodes[index],
+                    maxLines: null,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: InputBorder.none,
+                    ),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    onChanged: (value) => _onLineChanged(index),
+                    onEditingComplete: () => _handleEnterKey(index),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(r'[\n\r]')), // Prevent newlines
+                    ],
                   ),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                  onChanged: (value) => _onLineChanged(index),
-                  onEditingComplete: () => _handleEnterKey(index),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.deny(RegExp(r'[\n\r]')), // Prevent newlines
-                  ],
-                )
+                ),
               ),
               Container(
                 width: 50,
