@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
 import '../providers/settings_provider.dart';
+import '../services/rhyme_service.dart';
 import '../services/syllable_service.dart';
 import '../widgets/settings_panel.dart';
 
@@ -16,6 +17,7 @@ class EditorScreen extends StatefulWidget {
 
 class _EditorScreenState extends State<EditorScreen> {
   final SyllableService _syllableService = SyllableService();
+  final RhymeService _rhymeService = RhymeService();
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -31,12 +33,14 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _loadContent() async {
+    _rhymeService.reset();
     final content = await widget.file.readContent();
     _controller.text = content;
     _updateSyllableCounts();
   }
 
   void _onTextChanged() {
+    _rhymeService.reset();
     _updateSyllableCounts();
     _updateCurrentLine();
   }
@@ -81,6 +85,54 @@ class _EditorScreenState extends State<EditorScreen> {
     return offsets;
   }
 
+  TextSpan _buildColoredTextSpan(String text, TextStyle baseStyle) {
+    final List<TextSpan> spans = [];
+    final lines = text.split('\n');
+
+    for (int i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        spans.add(TextSpan(text: '\n', style: baseStyle));
+      }
+
+      final lineSpans = _colorWordsInLine(lines[i], baseStyle);
+      spans.addAll(lineSpans);
+    }
+
+    return TextSpan(children: spans);
+  }
+
+  List<TextSpan> _colorWordsInLine(String line, TextStyle baseStyle) {
+    final List<TextSpan> spans = [];
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+    // If rhyme coloring is disabled, return the whole line as one span
+    if (!settings.showRhymes) {
+      return [TextSpan(text: line, style: baseStyle)];
+    }
+
+    // Updated regex pattern to handle special characters better
+    final pattern = RegExp(r'([^\s]+|\s+)');
+    final matches = pattern.allMatches(line);
+
+    for (final match in matches) {
+      final word = match.group(0)!;
+      if (RegExp(r'\s+').hasMatch(word)) {
+        spans.add(TextSpan(text: word, style: baseStyle));
+      } else {
+        // Extract only letters for rhyme checking
+        final letters = word.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z]'), '');
+        final color = letters.isEmpty ? baseStyle.color! :
+        _rhymeService.getRhymeColor(letters);
+        spans.add(TextSpan(
+          text: word,
+          style: baseStyle.copyWith(color: color),
+        ));
+      }
+    }
+
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -103,7 +155,7 @@ class _EditorScreenState extends State<EditorScreen> {
             constraints.maxWidth - syllableCountsWidth - paddingHorizontal;
 
         final textPainter = TextPainter(
-          text: TextSpan(text: _controller.text, style: textStyle),
+          text: _buildColoredTextSpan(_controller.text, textStyle),
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.start,
           textScaler: MediaQuery.textScalerOf(context),
@@ -169,44 +221,67 @@ class _EditorScreenState extends State<EditorScreen> {
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24.0,
                       ),
-                      child: EditableText(
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        keyboardType: TextInputType.multiline,
-                        maxLines: null,
-                        style: textStyle,
-                        cursorColor: colorScheme.primary,
-                        backgroundCursorColor: colorScheme.surface,
-                        selectionColor: colorScheme.primary.withOpacity(0.2),
-                        cursorWidth: 2.0,
-                        cursorRadius: const Radius.circular(1),
-                        selectionControls: materialTextSelectionControls,
-                        onSelectionChanged: (selection, _) {
-                          _updateCurrentLine();
-                        },
+                      child: Stack(
+                        children: [
+                          RichText(
+                            text: _buildColoredTextSpan(_controller.text, textStyle),
+                            textDirection: TextDirection.ltr,
+                            textAlign: TextAlign.left,
+                            textScaler: MediaQuery.textScalerOf(context),
+                            strutStyle: StrutStyle(
+                              fontSize: textStyle.fontSize,
+                              height: textStyle.height,
+                              forceStrutHeight: true,
+                            ),
+                          ),
+                          EditableText(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            keyboardType: TextInputType.multiline,
+                            maxLines: null,
+                            style: textStyle.copyWith(
+                              color: Colors.transparent, // Make the editing text transparent
+                            ),
+                            cursorColor: colorScheme.primary,
+                            backgroundCursorColor: colorScheme.surface,
+                            selectionColor: colorScheme.primary.withOpacity(0.2),
+                            cursorWidth: 2.0,
+                            cursorRadius: const Radius.circular(1),
+                            selectionControls: materialTextSelectionControls,
+                            onSelectionChanged: (selection, _) {
+                              _updateCurrentLine();
+                            },
+                            strutStyle: StrutStyle(
+                              fontSize: textStyle.fontSize,
+                              height: textStyle.height,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: CustomPaint(
-                          painter: _SyllableCountPainter(
-                            lineOffsets: lineOffsets,
-                            syllableCounts: _syllableCounts,
-                            currentLine: _currentLine,
-                            textStyle: TextStyle(
-                              color: colorScheme.primary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+
+                    if (settings.showSyllables)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _SyllableCountPainter(
+                              lineOffsets: lineOffsets,
+                              syllableCounts: _syllableCounts,
+                              currentLine: _currentLine,
+                              textStyle: TextStyle(
+                                color: colorScheme.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              highlightColor: colorScheme.primary.withOpacity(
+                                  0.05),
+                              activeTextColor: colorScheme.primary,
+                              inactiveTextColor: colorScheme.onSurface
+                                  .withOpacity(0.4),
                             ),
-                            highlightColor: colorScheme.primary.withOpacity(
-                                0.05),
-                            activeTextColor: colorScheme.primary,
-                            inactiveTextColor: colorScheme.onSurface
-                                .withOpacity(0.4),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),

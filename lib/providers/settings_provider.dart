@@ -6,6 +6,14 @@ class SettingsProvider extends ChangeNotifier {
   static const String _fontFamilyKey = 'fontFamily';
   static const String _fontSizeKey = 'fontSize';
   static const String _lineHeightKey = 'lineHeight';
+  static const String _showSyllablesKey = 'showSyllables';
+  static const String _showRhymesKey = 'showRhymes';
+
+  bool _showSyllables = true;
+  bool _showRhymes = true;
+
+  bool get showSyllables => _showSyllables;
+  bool get showRhymes => _showRhymes;
 
   String _fontFamily = 'Inter';
   double _fontSize = 18;
@@ -19,6 +27,7 @@ class SettingsProvider extends ChangeNotifier {
     'Merriweather',
     'Playfair Display',
     'Lora',
+    'Fascinate',
   ];
 
   SettingsProvider() {
@@ -34,6 +43,8 @@ class SettingsProvider extends ChangeNotifier {
     _fontFamily = prefs.getString(_fontFamilyKey) ?? 'Inter';
     _fontSize = prefs.getDouble(_fontSizeKey) ?? 18;
     _lineHeight = prefs.getDouble(_lineHeightKey) ?? 1.6;
+    _showSyllables = prefs.getBool(_showSyllablesKey) ?? true;
+    _showRhymes = prefs.getBool(_showRhymesKey) ?? true;
     notifyListeners();
   }
 
@@ -60,6 +71,24 @@ class SettingsProvider extends ChangeNotifier {
       _lineHeight = lineHeight;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble(_lineHeightKey, lineHeight);
+      notifyListeners();
+    }
+  }
+
+  Future<void> setShowSyllables(bool value) async {
+    if (_showSyllables != value) {
+      _showSyllables = value;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_showSyllablesKey, value);
+      notifyListeners();
+    }
+  }
+
+  Future<void> setShowRhymes(bool value) async {
+    if (_showRhymes != value) {
+      _showRhymes = value;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_showRhymesKey, value);
       notifyListeners();
     }
   }
