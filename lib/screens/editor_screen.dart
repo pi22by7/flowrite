@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
+import '../providers/settings_provider.dart';
 import '../services/syllable_service.dart';
+import '../widgets/settings_panel.dart';
 
 class EditorScreen extends StatefulWidget {
   final WritingFile file;
@@ -53,7 +56,9 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!selection.isValid) return;
 
     final beforeCursor = text.substring(0, selection.start);
-    final newLineCount = '\n'.allMatches(beforeCursor).length;
+    final newLineCount = '\n'
+        .allMatches(beforeCursor)
+        .length;
 
     setState(() {
       _currentLine = newLineCount;
@@ -81,14 +86,19 @@ class _EditorScreenState extends State<EditorScreen> {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        final settings = Provider.of<SettingsProvider>(context);
+
         final textStyle = TextStyle(
-          fontSize: 16,
-          height: 1.5,
-          color: theme.colorScheme.onSurface,
+          fontFamily: settings.fontFamily,
+          fontSize: settings.fontSize,
+          height: settings.lineHeight,
+          color: colorScheme.onSurface,
+          letterSpacing: 0.2,
         );
 
         const syllableCountsWidth = 50.0;
-        const paddingHorizontal = 16.0 * 2; // Left and right padding
+        const paddingHorizontal = 16.0 * 2;
         final textAreaWidth =
             constraints.maxWidth - syllableCountsWidth - paddingHorizontal;
 
@@ -103,68 +113,128 @@ class _EditorScreenState extends State<EditorScreen> {
         );
 
         textPainter.layout(maxWidth: textAreaWidth);
-
         final lineOffsets = _getLineOffsets(textPainter);
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(widget.file.name),
+            centerTitle: true,
+            title: Column(
+              children: [
+                Text(
+                  widget.file.name,
+                  style: TextStyle(
+                    fontFamily: settings.fontFamily,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  '${_syllableCounts.length} lines',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.save),
+                icon: Icon(
+                  Icons.settings,
+                  color: colorScheme.primary,
+                ),
+                onPressed: () => _showSettings(context),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.save_rounded,
+                  color: colorScheme.primary,
+                ),
                 onPressed: _saveContent,
               ),
             ],
+            elevation: 0,
+            backgroundColor: colorScheme.surface,
           ),
-          body: SingleChildScrollView(
-            controller: _scrollController,
-            child: SizedBox(
-              width: constraints.maxWidth,
-              child: Stack(
-                children: [
-                  SizedBox(
-                    width: textAreaWidth + paddingHorizontal,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          body: Container(
+            color: colorScheme.surface,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                child: Stack(
+                  children: [
+                    Container(
+                      width: textAreaWidth + paddingHorizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                      ),
                       child: EditableText(
                         controller: _controller,
                         focusNode: _focusNode,
                         keyboardType: TextInputType.multiline,
                         maxLines: null,
                         style: textStyle,
-                        cursorColor: theme.colorScheme.primary,
-                        backgroundCursorColor: theme.colorScheme.surface,
+                        cursorColor: colorScheme.primary,
+                        backgroundCursorColor: colorScheme.surface,
+                        selectionColor: colorScheme.primary.withOpacity(0.2),
+                        cursorWidth: 2.0,
+                        cursorRadius: const Radius.circular(1),
                         selectionControls: materialTextSelectionControls,
                         onSelectionChanged: (selection, _) {
                           _updateCurrentLine();
                         },
                       ),
                     ),
-                  ),
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: _SyllableCountPainter(
-                          lineOffsets: lineOffsets,
-                          syllableCounts: _syllableCounts,
-                          currentLine: _currentLine,
-                          textStyle: TextStyle(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _SyllableCountPainter(
+                            lineOffsets: lineOffsets,
+                            syllableCounts: _syllableCounts,
+                            currentLine: _currentLine,
+                            textStyle: TextStyle(
+                              color: colorScheme.primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            highlightColor: colorScheme.primary.withOpacity(
+                                0.05),
+                            activeTextColor: colorScheme.primary,
+                            inactiveTextColor: colorScheme.onSurface
+                                .withOpacity(0.4),
                           ),
-                          highlightColor:
-                          theme.colorScheme.primary.withOpacity(0.1),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  void _showSettings(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          child: const SettingsPanel(),
+        ),
+      ),
     );
   }
 
@@ -192,6 +262,8 @@ class _SyllableCountPainter extends CustomPainter {
   final int currentLine;
   final TextStyle textStyle;
   final Color highlightColor;
+  final Color activeTextColor;
+  final Color inactiveTextColor;
 
   _SyllableCountPainter({
     required this.lineOffsets,
@@ -199,6 +271,8 @@ class _SyllableCountPainter extends CustomPainter {
     required this.currentLine,
     required this.textStyle,
     required this.highlightColor,
+    required this.activeTextColor,
+    required this.inactiveTextColor,
   });
 
   @override
@@ -212,15 +286,17 @@ class _SyllableCountPainter extends CustomPainter {
 
       // Draw highlight for current line
       if (i == currentLine) {
-        canvas.drawRect(
+        final highlightRect = RRect.fromRectAndRadius(
           Rect.fromLTWH(0, offsetY, size.width, height),
-          paint,
+          const Radius.circular(8),
         );
+        canvas.drawRRect(highlightRect, paint);
       }
 
       final textSpan = TextSpan(
         text: '${syllableCounts[i]}',
         style: textStyle.copyWith(
+          color: i == currentLine ? activeTextColor : inactiveTextColor,
           fontWeight: i == currentLine ? FontWeight.bold : FontWeight.normal,
         ),
       );
@@ -232,10 +308,9 @@ class _SyllableCountPainter extends CustomPainter {
 
       textPainter.layout(minWidth: 0, maxWidth: 50);
 
-      // Position the text at the right side
       final position = Offset(
-        size.width - textPainter.width - 16, // Adjust padding if necessary
-        offsetY + (height - textPainter.height) / 2, // Center vertically
+        size.width - textPainter.width - 24,
+        offsetY + (height - textPainter.height) / 2,
       );
 
       textPainter.paint(canvas, position);

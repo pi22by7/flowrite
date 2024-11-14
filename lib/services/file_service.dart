@@ -40,4 +40,11 @@ class FileService {
       await fileToDelete.delete();
     }
   }
+
+  renameFile(WritingFile file, String name) {
+    final oldFile = File(file.path);
+    final newPath = file.path.replaceFirst(file.name, name);
+    final newFile = File(newPath);
+    oldFile.rename(newFile.path);
+  }
 }
