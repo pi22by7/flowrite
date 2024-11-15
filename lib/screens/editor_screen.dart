@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
 import '../providers/settings_provider.dart';
+import '../services/file_service.dart';
 import '../services/rhyme_service.dart';
 import '../services/syllable_service.dart';
 import '../widgets/settings_panel.dart';
@@ -18,6 +19,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   final SyllableService _syllableService = SyllableService();
   final RhymeService _rhymeService = RhymeService();
+  final FileService _fileService = FileService();
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -314,11 +316,20 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _saveContent() async {
-    await widget.file.writeContent(_controller.text);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Saved successfully')),
-      );
+    try {
+      await _fileService.saveFile(widget.file, _controller.text);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving: $e')),
+        );
+      }
     }
   }
 

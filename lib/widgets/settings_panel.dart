@@ -92,26 +92,6 @@ class SettingsPanel extends StatelessWidget {
             ),
           ),
 
-          _buildSection(
-            title: 'Features',
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Show Syllable Count'),
-                  value: settings.showSyllables,
-                  onChanged: (value) => settings.setShowSyllables(value),
-                  activeColor: colorScheme.primary,
-                ),
-                SwitchListTile(
-                  title: const Text('Show Rhyme Colors'),
-                  value: settings.showRhymes,
-                  onChanged: (value) => settings.setShowRhymes(value),
-                  activeColor: colorScheme.primary,
-                ),
-              ],
-            ),
-          ),
-
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -140,6 +120,26 @@ class SettingsPanel extends StatelessWidget {
                 height: settings.lineHeight,
                 color: colorScheme.onSurface,
               ),
+            ),
+          ),
+
+          _buildSection(
+            title: 'Features',
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Show Syllable Count'),
+                  value: settings.showSyllables,
+                  onChanged: (value) => settings.setShowSyllables(value),
+                  activeColor: colorScheme.primary,
+                ),
+                SwitchListTile(
+                  title: const Text('Show Rhyme Colors'),
+                  value: settings.showRhymes,
+                  onChanged: (value) => settings.setShowRhymes(value),
+                  activeColor: colorScheme.primary,
+                ),
+              ],
             ),
           ),
         ],

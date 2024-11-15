@@ -1,50 +1,127 @@
 // lib/services/file_service.dart
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
+import '../providers/sync_provider.dart';
+import '../services/cloud_sync_service.dart';
 
 class FileService {
-  Future<String> get _directoryPath async {
-    final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/writings';
-    await Directory(path).create(recursive: true);
-    return path;
-  }
+  final CloudSyncService _cloudSync;
 
-  Future<List<WritingFile>> getFiles() async {
-    final path = await _directoryPath;
-    final directory = Directory(path);
+  FileService({CloudSyncService? cloudSync})
+      : _cloudSync = cloudSync ?? CloudSyncService();
 
-    if (!await directory.exists()) {
+  Future<List<WritingFile>> getFiles(BuildContext context) async {
+    try {
+      final syncProvider = Provider.of<SyncProvider>(context, listen: false);
+
+      if (syncProvider.isSignedIn) {
+        // First, get files from cloud
+        final cloudFiles = await _cloudSync.getFilesStream().first;
+
+        // Then, get local files
+        final localFiles = await _getLocalFiles();
+
+        // Merge cloud and local files, prioritizing cloud versions
+        final mergedFiles = _mergeFiles(cloudFiles, localFiles);
+
+        // Sync any local changes to cloud
+        await _syncLocalChanges(mergedFiles);
+
+        return mergedFiles;
+      } else {
+        // If not signed in, return only local files
+        return await _getLocalFiles();
+      }
+    } catch (e) {
+      debugPrint('Error getting files: $e');
       return [];
     }
+  }
 
-    return directory
-        .listSync()
-        .whereType<File>()
+  Future<List<WritingFile>> _getLocalFiles() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final files = await directory.list().toList();
+    return files
         .where((file) => file.path.endsWith('.txt'))
-        .map((file) => WritingFile.fromFile(file))
+        .map((file) => WritingFile(
+      id: file.path.split('/').last.split('.').first,
+      name: file.path.split('/').last.split('.').first,
+      content: File(file.path).readAsStringSync(),
+    ))
         .toList();
   }
 
-  Future<WritingFile> createFile(String name) async {
-    final path = await _directoryPath;
-    final file = File('$path/$name.txt');
-    await file.create();
-    return WritingFile.fromFile(file);
+  List<WritingFile> _mergeFiles(List<WritingFile> cloudFiles, List<WritingFile> localFiles) {
+    final Map<String, WritingFile> mergedFiles = {};
+
+    // Add cloud files first, prioritizing them
+    for (var file in cloudFiles) {
+      mergedFiles[file.id] = file;
+    }
+
+    // Add local files, but only if they don't exist in cloud or are newer
+    for (var file in localFiles) {
+      if (!mergedFiles.containsKey(file.id) ||
+          file.lastModified.isAfter(mergedFiles[file.id]!.lastModified)) {
+        mergedFiles[file.id] = file;
+      }
+    }
+
+    return mergedFiles.values.toList();
   }
 
-  Future<void> deleteFile(WritingFile file) async {
-    final fileToDelete = File(file.path);
-    if (await fileToDelete.exists()) {
-      await fileToDelete.delete();
+  Future<void> _syncLocalChanges(List<WritingFile> files) async {
+    for (var file in files) {
+      await _cloudSync.syncFile(file);
     }
   }
 
-  renameFile(WritingFile file, String name) {
-    final oldFile = File(file.path);
-    final newPath = file.path.replaceFirst(file.name, name);
-    final newFile = File(newPath);
-    oldFile.rename(newFile.path);
+  Future<WritingFile> createFile(String name) async {
+    final file = WritingFile(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      content: '',
+    );
+
+    // Save locally
+    await file.writeContent('');
+
+    // Sync to cloud
+    await _cloudSync.syncFile(file);
+
+    return file;
+  }
+
+  Future<void> saveFile(WritingFile file, String content) async {
+    // Save locally
+    await file.writeContent(content);
+
+    // Sync to cloud
+    await _cloudSync.syncFile(file);
+  }
+
+  Future<void> deleteFile(WritingFile file) async {
+    // Delete locally
+    await file.delete();
+
+    // Delete from cloud
+    await _cloudSync.deleteFile(file.id);
+  }
+
+  Future<void> renameFile(WritingFile file, String newName) async {
+    final updatedFile = WritingFile(
+      id: file.id,
+      name: newName,
+      content: await file.readContent(),
+    );
+
+    // Save locally
+    await updatedFile.writeContent(await file.readContent());
+
+    // Sync to cloud
+    await _cloudSync.syncFile(updatedFile);
   }
 }

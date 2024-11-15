@@ -1,9 +1,13 @@
 // lib/screens/home_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/sync_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/cloud_sync_service.dart';
 import '../widgets/file_dialog.dart';
 import '../widgets/settings_panel.dart';
+import '../widgets/sync_status.dart';
 import 'editor_screen.dart';
 import '../models/writing_file.dart';
 import '../services/file_service.dart';
@@ -17,25 +21,90 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final FileService _fileService = FileService();
+  final CloudSyncService _cloudSync = CloudSyncService();
   List<WritingFile> _files = [];
+  StreamSubscription? _cloudSubscription;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadFiles();
+    _setupCloudSync();
   }
 
+
   Future<void> _loadFiles() async {
-    final files = await _fileService.getFiles();
-    setState(() {
-      _files = files;
+    setState(() => _isLoading = true);
+    try {
+      ScaffoldMessenger.of(context);
+      final files = await _fileService.getFiles(context);
+      if (mounted) {
+        setState(() {
+          _files = files;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading files: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        // Show error message to user
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading files: $e')),
+        );
+      }
+    }
+  }
+
+  void _setupCloudSync() {
+    final syncProvider = Provider.of<SyncProvider>(context, listen: false);
+
+    // Listen to auth state changes
+    syncProvider.authStateChanges.listen((user) {
+      if (user != null) {
+        // User signed in, start listening to cloud changes
+        _cloudSubscription?.cancel();
+        _cloudSubscription = _cloudSync.getFilesStream().listen((cloudFiles) {
+          setState(() {
+            _files = cloudFiles;
+          });
+        });
+      } else {
+        // User signed out, stop listening
+        _cloudSubscription?.cancel();
+        _loadFiles(); // Load local files only
+      }
     });
+  }
+
+  void _manualSync() async {
+    setState(() => _isLoading = true);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    try {
+      await Provider.of<SyncProvider>(context, listen: false).checkPendingSyncs();
+      await _loadFiles();
+    } catch (e) {
+      debugPrint('Error during manual sync: $e');
+      // Show error message to user
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text('Error syncing files: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final colorScheme = Theme.of(context).colorScheme;
+
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return Scaffold(
       appBar: _buildAppBar(themeProvider, colorScheme),
@@ -48,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   AppBar _buildAppBar(ThemeProvider themeProvider, ColorScheme colorScheme) {
     return AppBar(
-      centerTitle: true,
+      centerTitle: false,
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -67,12 +136,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       actions: [
+        const SyncStatus(),
         IconButton(
-          icon: Icon(
-            Icons.settings,
-            color: colorScheme.primary,
-          ),
-          onPressed: () => _showSettings(context),
+          icon: Icon(Icons.sync, color: colorScheme.primary),
+          onPressed: _manualSync,
         ),
         IconButton(
           icon: Icon(
@@ -81,13 +148,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           onPressed: () => themeProvider.toggleTheme(),
         ),
+        IconButton(
+          icon: Icon(
+            Icons.settings,
+            color: colorScheme.primary,
+          ),
+          onPressed: () => _showSettings(context),
+        ),
       ],
       elevation: 0,
       backgroundColor: Colors.transparent,
     );
   }
 
-  // Continuing from HomeScreen's _showSettings method
   void _showSettings(BuildContext context) {
     showModalBottomSheet(
       context: context,
