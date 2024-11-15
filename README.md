@@ -1,16 +1,105 @@
-# flowrite
+# Flowrite 📝
 
-Songwriting app
+![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
+![Firebase](https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase)
+![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 
-## Getting Started
+Flowrite is a modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. With seamless cloud sync and a clean interface, your creative process has never been more fluid.
 
-This project is a starting point for a Flutter application.
+## ✨ Features
 
-A few resources to get you started if this is your first Flutter project:
+- **Clean, Distraction-free Writing**: Focus on your creativity with our minimalist interface
+- **Cloud Sync**: Access your work across all your devices
+- **Offline Support**: Write anywhere, even without internet connection
+- **Auto-save**: Never lose your work with automatic saving
+- **Dark Mode**: Easy on the eyes during late-night writing sessions
+- **Google Sign-in**: Secure and easy authentication
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 🚀 Getting Started
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. Download Flowrite from the App Store or Google Play
+2. Sign in with your Google account (optional)
+3. Start creating!
+
+## 💻 Development Setup
+
+### Prerequisites
+- Flutter SDK (latest stable version)
+- Firebase project
+- Android Studio / VS Code
+
+### Installation
+```bash
+Clone the repository
+git clone https://github.com/pi22b7/flowrite.git
+
+Navigate to project directory
+cd flowrite
+
+Install dependencies
+flutter pub get
+
+Run the app
+flutter run
+```
+
+
+## 🏗️ Built With
+
+- [Flutter](https://flutter.dev/) - UI Framework
+- [Firebase](https://firebase.google.com/) - Backend & Authentication
+- [Provider](https://pub.dev/packages/provider) - State Management
+- [Google Sign In](https://pub.dev/packages/google_sign_in) - Authentication
+
+## 📱 Screenshots
+
+[Add your app screenshots here]
+
+## 🔒 Privacy & Security
+
+- All data is encrypted in transit
+- Google Sign-in for secure authentication
+- Local storage for offline access
+- Optional cloud sync
+
+## 🗺️ Roadmap
+
+- [x] Basic app structure and UI
+- [x] Dark/Light theme support
+- [x] Local file storage
+- [x] Google Sign-in integration
+- [x] Firebase Cloud Firestore integration
+- [x] Auto-save functionality
+- [x] File management (create, rename, delete)
+- [x] Cloud sync capabilities
+- [x] Offline support
+- [x] Settings panel
+- [x] Manual sync option
+- [x] File conflict resolution
+- [ ] Markdown support
+- [ ] In-line formatting
+- [ ] Error handling and user feedback
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+## 📧 Contact
+
+π - [@pi_22by7](https://www.threads.net/@pi_22by7) - hey@pi22by7.me
+
+Project Link: [https://github.com/pi22by7/flowrite](https://github.com/pi22by7/flowrite)
+
+---
+
+Made with ❤️ by π
