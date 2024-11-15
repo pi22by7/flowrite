@@ -51,7 +51,7 @@ class _EditorScreenState extends State<EditorScreen> {
     setState(() {
       _syllableCounts = _controller.text
           .split('\n')
-          .map((line) => _syllableService.countSyllables(line))
+          .map((line) => _syllableService.countSyllablesInText(line))
           .toList();
     });
   }
