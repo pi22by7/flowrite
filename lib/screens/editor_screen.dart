@@ -26,6 +26,8 @@ class _EditorScreenState extends State<EditorScreen> {
 
   List<int> _syllableCounts = [];
   int _currentLine = 0;
+  bool _isSaving = false;
+  // String _saveStatus = '';
 
   @override
   void initState() {
@@ -199,13 +201,20 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
                 onPressed: () => _showSettings(context),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.save_rounded,
-                  color: colorScheme.primary,
+              if (_isSaving)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.save),
+                  onPressed: _saveContent,
                 ),
-                onPressed: _saveContent,
-              ),
             ],
             elevation: 0,
             backgroundColor: colorScheme.surface,
@@ -316,20 +325,41 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _saveContent() async {
-    try {
-      await _fileService.saveFile(widget.file, _controller.text);
+    setState(() {
+      _isSaving = true;
+      // _saveStatus = 'Saving...';
+    });
 
+    try {
+      final (success, message) = await _fileService.saveFile(
+        widget.file,
+        _controller.text,
+      );
+
+      // setState(() {
+      //   _saveStatus = message;
+      // });
+
+      // Show snackbar with status
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Saved successfully')),
+          SnackBar(
+            content: Text(message),
+            duration: const Duration(seconds: 2),
+            backgroundColor: success
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.error,
+          ),
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving: $e')),
-        );
-      }
+      // setState(() {
+      //   _saveStatus = 'Error saving file';
+      // });
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
     }
   }
 

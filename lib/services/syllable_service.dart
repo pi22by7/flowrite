@@ -262,10 +262,8 @@ class SyllableService {
   'wards': 1,
   'wise': 1,
   'y': 1,
-    // ... continuing from previous suffixes
   };
 
-  // Add helper methods for better accuracy
   bool _isConsonant(String char) {
     return !_isVowel(char);
   }
@@ -285,7 +283,6 @@ class SyllableService {
         _commonCompoundWords.contains(word);
   }
 
-  // Add common compound words that might need special handling
   static const Set<String> _commonCompoundWords = {
     'somewhere',
     'anymore',
@@ -305,7 +302,6 @@ class SyllableService {
     'throughout',
   };
 
-  // Add method to handle compound words
   int _handleCompoundWord(String word) {
     if (word.contains('-')) {
       return word.split('-')
@@ -315,7 +311,6 @@ class SyllableService {
     return 0; // Not a compound word
   }
 
-  // Add method to handle numbers
   int _handleNumber(String word) {
     // Handle common number words
     const Map<String, int> numberSyllables = {
@@ -357,13 +352,11 @@ class SyllableService {
     return numberSyllables[word] ?? 0;
   }
 
-  // Add method to validate input
   bool _isValidWord(String word) {
     return word.isNotEmpty &&
         RegExp(r'^[a-zA-Z\-]+$').hasMatch(word);
   }
 
-  // Add method for better accuracy with common exceptions
   int _handleExceptions(String word) {
     // Handle words ending in 'sm'
     if (word.endsWith('sm') && word.length > 3) {
@@ -378,7 +371,6 @@ class SyllableService {
     return 0; // No exception found
   }
 
-  // Add method to get syllable stress pattern
   List<bool> getStressPattern(String word) {
     final syllableCount = countSyllables(word);
     if (syllableCount <= 1) return [true];
@@ -390,7 +382,6 @@ class SyllableService {
           : [false, true];
     }
 
-    // For longer words, implement more complex stress patterns
     return List.generate(syllableCount, (index) => index == 0);
   }
 }
