@@ -51,9 +51,6 @@ flutter run
 - [Provider](https://pub.dev/packages/provider) - State Management
 - [Google Sign In](https://pub.dev/packages/google_sign_in) - Authentication
 
-## 📱 Screenshots
-
-[Add your app screenshots here]
 
 ## 🔒 Privacy & Security
 
@@ -92,7 +89,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details
 
 ## 📧 Contact
 
