@@ -11,6 +11,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+  actions: read
+
 env:
   FLUTTER_VERSION: '3.32.6'
 
@@ -66,8 +70,8 @@ jobs:
         with:
           name: android-release
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/flutter-apk/
+            build/app/outputs/bundle/release/
 
   create-release:
     needs: [prepare, build-android]
@@ -89,7 +93,7 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            android-release/app-release.apk
-            android-release/app-release.aab
+            android-release/flutter-apk/app-release.apk
+            android-release/release/app-release.aab
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
