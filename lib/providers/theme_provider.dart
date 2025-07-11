@@ -17,14 +17,14 @@ class ThemeProvider extends ChangeNotifier {
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: const ColorScheme.light(
-      primary: Color(0xFF6246EA),    // Deep Purple
-      secondary: Color(0xFFE45858),  // Pure White
+      primary: Color(0xFF6246EA), // Deep Purple
+      secondary: Color(0xFFE45858), // Pure White
       surface: Color(0xFFFFFFFE),
       onPrimary: Color(0xFFFFFFFE),
       onSecondary: Color(0xFFFFFFFE), // Dark Grey
       onSurface: Color(0xFF2B2C34),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -50,14 +50,14 @@ class ThemeProvider extends ChangeNotifier {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
-      primary: Color(0xFF9D8DF1),     // Light Purple
-      secondary: Color(0xFFFF8E8E),   // Deep Dark
-      surface: Color(0xFF21212B),      // Dark Grey
+      primary: Color(0xFF9D8DF1), // Light Purple
+      secondary: Color(0xFFFF8E8E), // Deep Dark
+      surface: Color(0xFF21212B), // Dark Grey
       onPrimary: Color(0xFF17171F),
       onSecondary: Color(0xFF17171F),
       onSurface: Color(0xFFFFFFFE),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),

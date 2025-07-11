@@ -33,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _setupCloudSync();
   }
 
-
   Future<void> _loadFiles() async {
     setState(() => _isLoading = true);
     try {
@@ -84,7 +83,8 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
-      await Provider.of<SyncProvider>(context, listen: false).checkPendingSyncs();
+      await Provider.of<SyncProvider>(context, listen: false)
+          .checkPendingSyncs();
       await _loadFiles();
     } catch (e) {
       debugPrint('Error during manual sync: $e');
@@ -108,9 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: _buildAppBar(themeProvider, colorScheme),
-      body: _files.isEmpty
-          ? _buildEmptyState()
-          : _buildGridView(context),
+      body: _files.isEmpty ? _buildEmptyState() : _buildGridView(context),
       floatingActionButton: _buildFloatingActionButton(context),
     );
   }
@@ -236,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.1),
+        color: colorScheme.primary.withAlpha(25),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -279,11 +277,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   PopupMenuItem<String> _buildMenuItem(
-      String value,
-      String text,
-      IconData icon,
-      Color color,
-      ) {
+    String value,
+    String text,
+    IconData icon,
+    Color color,
+  ) {
     return PopupMenuItem(
       value: value,
       child: Row(
@@ -309,8 +307,8 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             file.name,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -320,14 +318,14 @@ class _HomeScreenState extends State<HomeScreen> {
               Icon(
                 Icons.edit_outlined,
                 size: 16,
-                color: colorScheme.onSurface.withOpacity(0.6),
+                color: colorScheme.onSurface.withAlpha(153),
               ),
               const SizedBox(width: 8),
               Text(
                 'Tap to edit',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.6),
-                ),
+                      color: colorScheme.onSurface.withAlpha(153),
+                    ),
               ),
             ],
           ),
@@ -345,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.1),
+              color: colorScheme.primary.withAlpha(25),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -358,9 +356,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'No Notes Yet',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
           ),
           const SizedBox(height: 12),
           Padding(
@@ -368,8 +366,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               'Create your first note by tapping the button below',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.7),
-              ),
+                    color: colorScheme.onSurface.withAlpha(178),
+                  ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -384,9 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
       icon: const Icon(Icons.add),
       label: const Text('New Note'),
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(32)
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
     );
   }
 
@@ -443,7 +439,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
 
   Future<void> _deleteFile(WritingFile file) async {
     final confirmed = await showDialog<bool>(

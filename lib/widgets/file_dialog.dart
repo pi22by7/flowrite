@@ -48,8 +48,8 @@ class _FileDialogState extends State<FileDialog> {
       title: Text(
         widget.title.isNotEmpty ? widget.title : 'Create New Note',
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-        ),
+              fontWeight: FontWeight.bold,
+            ),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -74,7 +74,7 @@ class _FileDialogState extends State<FileDialog> {
                 ),
               ),
               filled: true,
-              fillColor: colorScheme.primary.withOpacity(0.05),
+              fillColor: colorScheme.primary.withAlpha(12),
             ),
             autofocus: true,
             textCapitalization: TextCapitalization.sentences,
@@ -97,7 +97,7 @@ class _FileDialogState extends State<FileDialog> {
           onPressed: () => Navigator.pop(context),
           child: Text(
             'Cancel',
-            style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+            style: TextStyle(color: colorScheme.onSurface.withAlpha(178)),
           ),
         ),
         FilledButton(

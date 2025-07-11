@@ -64,9 +64,7 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!selection.isValid) return;
 
     final beforeCursor = text.substring(0, selection.start);
-    final newLineCount = '\n'
-        .allMatches(beforeCursor)
-        .length;
+    final newLineCount = '\n'.allMatches(beforeCursor).length;
 
     setState(() {
       _currentLine = newLineCount;
@@ -125,8 +123,9 @@ class _EditorScreenState extends State<EditorScreen> {
       } else {
         // Extract only letters for rhyme checking
         final letters = word.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z]'), '');
-        final color = letters.isEmpty ? baseStyle.color! :
-        _rhymeService.getRhymeColor(letters);
+        final color = letters.isEmpty
+            ? baseStyle.color!
+            : _rhymeService.getRhymeColor(letters);
         spans.add(TextSpan(
           text: word,
           style: baseStyle.copyWith(color: color),
@@ -187,7 +186,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 Text(
                   '${_syllableCounts.length} lines',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withAlpha(153),
                     fontSize: 12,
                   ),
                 ),
@@ -235,7 +234,8 @@ class _EditorScreenState extends State<EditorScreen> {
                       child: Stack(
                         children: [
                           RichText(
-                            text: _buildColoredTextSpan(_controller.text, textStyle),
+                            text: _buildColoredTextSpan(
+                                _controller.text, textStyle),
                             textDirection: TextDirection.ltr,
                             textAlign: TextAlign.left,
                             textScaler: MediaQuery.textScalerOf(context),
@@ -251,11 +251,12 @@ class _EditorScreenState extends State<EditorScreen> {
                             keyboardType: TextInputType.multiline,
                             maxLines: null,
                             style: textStyle.copyWith(
-                              color: Colors.transparent, // Make the editing text transparent
+                              color: Colors
+                                  .transparent, // Make the editing text transparent
                             ),
                             cursorColor: colorScheme.primary,
                             backgroundCursorColor: colorScheme.surface,
-                            selectionColor: colorScheme.primary.withOpacity(0.2),
+                            selectionColor: colorScheme.primary.withAlpha(51),
                             cursorWidth: 2.0,
                             cursorRadius: const Radius.circular(1),
                             selectionControls: materialTextSelectionControls,
@@ -270,7 +271,6 @@ class _EditorScreenState extends State<EditorScreen> {
                         ],
                       ),
                     ),
-
                     if (settings.showSyllables)
                       Positioned.fill(
                         child: IgnorePointer(
@@ -284,11 +284,10 @@ class _EditorScreenState extends State<EditorScreen> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
-                              highlightColor: colorScheme.primary.withOpacity(
-                                  0.05),
+                              highlightColor: colorScheme.primary.withAlpha(12),
                               activeTextColor: colorScheme.primary,
-                              inactiveTextColor: colorScheme.onSurface
-                                  .withOpacity(0.4),
+                              inactiveTextColor:
+                                  colorScheme.onSurface.withAlpha(102),
                             ),
                           ),
                         ),

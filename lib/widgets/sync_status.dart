@@ -53,10 +53,11 @@ class SyncStatus extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Your files are automatically synced to the cloud.',
-                style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+                style: TextStyle(color: colorScheme.onSurface.withAlpha(178)),
               ),
             ] else
-              const Text('Sign in to enable cloud sync and access your files anywhere.'),
+              const Text(
+                  'Sign in to enable cloud sync and access your files anywhere.'),
           ],
         ),
         actions: [

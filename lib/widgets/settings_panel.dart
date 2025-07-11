@@ -91,7 +91,6 @@ class SettingsPanel extends StatelessWidget {
               onChanged: (value) => settings.setLineHeight(value),
             ),
           ),
-
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -109,7 +108,7 @@ class SettingsPanel extends StatelessWidget {
               color: colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: colorScheme.outline.withOpacity(0.2),
+                color: colorScheme.outline.withAlpha(51),
               ),
             ),
             child: Text(
@@ -122,7 +121,6 @@ class SettingsPanel extends StatelessWidget {
               ),
             ),
           ),
-
           _buildSection(
             title: 'Features',
             child: Column(
