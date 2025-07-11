@@ -7,6 +7,47 @@
 
 Flowrite is a modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. With seamless cloud sync, a clean, minimalist interface, and robust offline support, your creative process has never been more fluid.
 
+## 📱 Screenshots
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="assets/screenshots/home_screen_empty.png" width="250" alt="Home Screen (Empty)">
+        <br>
+        <em>Home Screen (Empty)</em>
+      </td>
+      <td align="center">
+        <img src="assets/screenshots/home_screen.png" width="250" alt="Home Screen">
+        <br>
+        <em>Home Screen</em>
+      </td>
+      <td align="center">
+        <img src="assets/screenshots/editor_screen.png" width="250" alt="Editor Screen">
+        <br>
+        <em>Editor Screen</em>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <img src="assets/screenshots/new_file_dialog.png" width="250" alt="New File Dialog">
+        <br>
+        <em>New File Dialog</em>
+      </td>
+      <td align="center">
+        <img src="assets/screenshots/settings_screen.png" width="250" alt="Settings Screen">
+        <br>
+        <em>Settings Screen</em>
+      </td>
+      <td align="center">
+        <img src="assets/screenshots/dark_theme.png" width="250" alt="Dark Theme">
+        <br>
+        <em>Dark Theme</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
 ## ✨ Features
 
 - **Clean, Distraction-free Writing**: Focus on your creativity with our minimalist interface.
@@ -22,6 +63,78 @@ Flowrite is a modern, intuitive songwriting and poetry app designed to help crea
 ## 🚀 Getting Started
 
 To get a local copy up and running, follow these simple steps.
+
+## 🛠️ Development
+
+### Generating Screenshots
+
+This project includes automated screenshot generation for documentation and app store submissions.
+
+#### Quick Start
+
+```sh
+# Generate screenshots automatically
+./scripts/generate_screenshots.sh
+```
+
+#### Manual Process
+
+1. **Ensure you have a device or emulator running:**
+
+   ```sh
+   flutter devices
+   ```
+
+2. **Get dependencies:**
+
+   ```sh
+   flutter pub get
+   ```
+
+3. **Run the integration test:**
+   ```sh
+   flutter test integration_test/app_test.dart
+   ```
+
+Screenshots will be saved in `assets/screenshots/` and organized by platform (android/ios).
+
+📖 **For detailed screenshot generation documentation, see [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)**
+
+#### Creating Placeholders
+
+If you want to create placeholder screenshots for immediate use:
+
+```sh
+./scripts/create_placeholders.sh
+```
+
+#### Continuous Integration
+
+Screenshots are automatically generated via GitHub Actions when:
+
+- Code is pushed to main branch
+- PRs are created that modify UI code
+- Manually triggered via workflow dispatch
+
+### Testing
+
+#### Unit Tests
+
+```sh
+flutter test
+```
+
+#### Integration Tests
+
+```sh
+flutter test integration_test/
+```
+
+#### Widget Tests
+
+```sh
+flutter test test/
+```
 
 ### Prerequisites
 
