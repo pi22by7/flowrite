@@ -171,134 +171,247 @@ class _EditorScreenState extends State<EditorScreen> {
         final lineOffsets = _getLineOffsets(textPainter);
 
         return Scaffold(
-          appBar: AppBar(
-            centerTitle: true,
-            title: Column(
+          backgroundColor: colorScheme.surface,
+          body: SafeArea(
+            child: Column(
               children: [
-                Text(
-                  widget.file.name,
-                  style: TextStyle(
-                    fontFamily: settings.fontFamily,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                Text(
-                  '${_syllableCounts.length} lines',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withAlpha(153),
-                    fontSize: 12,
+                _buildMinimalAppBar(colorScheme, settings),
+                Expanded(
+                  child: _buildEditor(
+                    constraints,
+                    textStyle,
+                    colorScheme,
+                    settings,
+                    textAreaWidth,
+                    paddingHorizontal,
+                    lineOffsets,
                   ),
                 ),
               ],
             ),
-            actions: [
-              IconButton(
-                icon: Icon(
-                  Icons.settings,
-                  color: colorScheme.primary,
-                ),
-                onPressed: () => _showSettings(context),
-              ),
-              if (_isSaving)
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.save),
-                  onPressed: _saveContent,
-                ),
-            ],
-            elevation: 0,
-            backgroundColor: colorScheme.surface,
           ),
-          body: Container(
-            color: colorScheme.surface,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              child: SizedBox(
-                width: constraints.maxWidth,
-                child: Stack(
-                  children: [
-                    Container(
-                      width: textAreaWidth + paddingHorizontal,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                      ),
-                      child: Stack(
-                        children: [
-                          RichText(
-                            text: _buildColoredTextSpan(
-                                _controller.text, textStyle),
-                            textDirection: TextDirection.ltr,
-                            textAlign: TextAlign.left,
-                            textScaler: MediaQuery.textScalerOf(context),
-                            strutStyle: StrutStyle(
-                              fontSize: textStyle.fontSize,
-                              height: textStyle.height,
-                              forceStrutHeight: true,
-                            ),
-                          ),
-                          EditableText(
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            keyboardType: TextInputType.multiline,
-                            maxLines: null,
-                            style: textStyle.copyWith(
-                              color: Colors
-                                  .transparent, // Make the editing text transparent
-                            ),
-                            cursorColor: colorScheme.primary,
-                            backgroundCursorColor: colorScheme.surface,
-                            selectionColor: colorScheme.primary.withAlpha(51),
-                            cursorWidth: 2.0,
-                            cursorRadius: const Radius.circular(1),
-                            selectionControls: materialTextSelectionControls,
-                            onSelectionChanged: (selection, _) {
-                              _updateCurrentLine();
-                            },
-                            strutStyle: StrutStyle(
-                              fontSize: textStyle.fontSize,
-                              height: textStyle.height,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (settings.showSyllables)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: CustomPaint(
-                            painter: _SyllableCountPainter(
-                              lineOffsets: lineOffsets,
-                              syllableCounts: _syllableCounts,
-                              currentLine: _currentLine,
-                              textStyle: TextStyle(
-                                color: colorScheme.primary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              highlightColor: colorScheme.primary.withAlpha(12),
-                              activeTextColor: colorScheme.primary,
-                              inactiveTextColor:
-                                  colorScheme.onSurface.withAlpha(102),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMinimalAppBar(
+      ColorScheme colorScheme, SettingsProvider settings) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outline.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => Navigator.pop(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ),
           ),
-        );
-      },
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.file.name,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHeaderButton(
+                icon: Icons.settings_rounded,
+                onPressed: () => _showSettings(context),
+                colorScheme: colorScheme,
+              ),
+              const SizedBox(width: 8),
+              _buildHeaderButton(
+                icon: _isSaving ? Icons.sync_rounded : Icons.check_rounded,
+                onPressed: _isSaving ? null : _saveContent,
+                colorScheme: colorScheme,
+                isLoading: _isSaving,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required ColorScheme colorScheme,
+    bool isLoading = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: onPressed != null
+                ? colorScheme.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: onPressed != null
+                  ? colorScheme.primary.withValues(alpha: 0.2)
+                  : colorScheme.outline.withValues(alpha: 0.1),
+            ),
+          ),
+          child: isLoading
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: colorScheme.primary,
+                  ),
+                )
+              : Icon(
+                  icon,
+                  size: 20,
+                  color: onPressed != null
+                      ? colorScheme.primary
+                      : colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditor(
+    BoxConstraints constraints,
+    TextStyle textStyle,
+    ColorScheme colorScheme,
+    SettingsProvider settings,
+    double textAreaWidth,
+    double paddingHorizontal,
+    List<Map<String, dynamic>> lineOffsets,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        child: SizedBox(
+          width: constraints.maxWidth,
+          child: Stack(
+            children: [
+              SizedBox(
+                width: textAreaWidth + paddingHorizontal,
+                child: Stack(
+                  children: [
+                    RichText(
+                      text: _buildColoredTextSpan(_controller.text, textStyle),
+                      textDirection: TextDirection.ltr,
+                      textAlign: TextAlign.left,
+                      textScaler: MediaQuery.textScalerOf(context),
+                      strutStyle: StrutStyle(
+                        fontSize: textStyle.fontSize,
+                        height: textStyle.height,
+                        forceStrutHeight: true,
+                      ),
+                    ),
+                    EditableText(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      keyboardType: TextInputType.multiline,
+                      maxLines: null,
+                      style: textStyle.copyWith(
+                        color: Colors.transparent,
+                      ),
+                      cursorColor: colorScheme.primary,
+                      backgroundCursorColor: colorScheme.surface,
+                      selectionColor:
+                          colorScheme.primary.withValues(alpha: 0.2),
+                      cursorWidth: 2.0,
+                      cursorRadius: const Radius.circular(1),
+                      selectionControls: materialTextSelectionControls,
+                      onSelectionChanged: (selection, _) {
+                        _updateCurrentLine();
+                      },
+                      strutStyle: StrutStyle(
+                        fontSize: textStyle.fontSize,
+                        height: textStyle.height,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (settings.showSyllables)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _SyllableCountPainter(
+                        lineOffsets: lineOffsets,
+                        syllableCounts: _syllableCounts,
+                        currentLine: _currentLine,
+                        textStyle: TextStyle(
+                          color: colorScheme.primary.withValues(alpha: 0.7),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        highlightColor:
+                            colorScheme.primary.withValues(alpha: 0.05),
+                        activeTextColor: colorScheme.primary,
+                        inactiveTextColor:
+                            colorScheme.onSurface.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

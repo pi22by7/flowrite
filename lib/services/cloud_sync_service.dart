@@ -15,6 +15,8 @@ class CloudSyncService {
 
   String get _userId => _auth.currentUser?.uid ?? '';
 
+  bool get isSignedIn => _userId.isNotEmpty;
+
   Future<bool> get isOnline async {
     try {
       await _firestore.runTransaction((transaction) async {
@@ -28,10 +30,29 @@ class CloudSyncService {
   }
 
   Future<bool> syncFile(WritingFile file) async {
-    if (_userId.isEmpty) return false;
+    if (_userId.isEmpty) {
+      debugPrint('User not signed in, cannot sync file ${file.id}');
+      return false;
+    }
 
     try {
-      // Update cloud
+      // Check online status first
+      final isOnline = await this.isOnline;
+      if (!isOnline) {
+        debugPrint('Device is offline, cannot sync file ${file.id}');
+        return false;
+      }
+
+      // Read content with error handling
+      String content;
+      try {
+        content = await file.readContent();
+      } catch (e) {
+        debugPrint('Error reading content for file ${file.id}: $e');
+        return false;
+      }
+
+      // Update cloud with timeout
       await _firestore
           .collection('users')
           .doc(_userId)
@@ -39,18 +60,25 @@ class CloudSyncService {
           .doc(file.id)
           .set({
         'name': file.name,
-        'content': await file.readContent(),
+        'content': content,
         'lastModified': FieldValue.serverTimestamp(),
-      });
+      }).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw Exception('Firestore write timeout');
+        },
+      );
 
       // Update local metadata
       await _updateLocalFileMetadata(file);
 
       // Update last sync timestamp
       await _updateLastSyncTime();
+
+      debugPrint('Successfully synced file ${file.id} to cloud');
       return true;
     } catch (e) {
-      debugPrint('Error syncing file to cloud: $e');
+      debugPrint('Error syncing file ${file.id} to cloud: $e');
       return false;
     }
   }
@@ -85,46 +113,77 @@ class CloudSyncService {
         .orderBy('lastModified', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
-        .map((doc) => WritingFile(
-      id: doc.id,
-      name: doc['name'],
-      content: doc['content'],
-    ))
-        .toList());
+            .map((doc) => WritingFile(
+                  id: doc.id,
+                  name: doc['name'],
+                  content: doc['content'],
+                ))
+            .toList());
   }
 
   Future<void> syncPendingChanges() async {
-    if (_userId.isEmpty) return;
+    if (_userId.isEmpty) {
+      debugPrint('User not signed in, cannot sync pending changes');
+      return;
+    }
 
     try {
       final lastSync = await _getLastSyncTime();
       final localFiles = await _getModifiedLocalFiles(lastSync);
 
-      if (localFiles.isEmpty) return;
-
-      // Batch write to Firestore
-      final batch = _firestore.batch();
-      final userFilesRef = _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('files');
-
-      for (var file in localFiles) {
-        batch.set(userFilesRef.doc(file.id), {
-          'name': file.name,
-          'content': await file.readContent(),
-          'lastModified': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+      if (localFiles.isEmpty) {
+        debugPrint('No modified local files to sync');
+        return;
       }
 
-      await batch.commit();
+      debugPrint('Syncing ${localFiles.length} modified files to cloud');
+
+      // Check online status before attempting batch write
+      final isOnline = await this.isOnline;
+      if (!isOnline) {
+        debugPrint('Device is offline, cannot sync to cloud');
+        return;
+      }
+
+      // Batch write to Firestore with timeout
+      final batch = _firestore.batch();
+      final userFilesRef =
+          _firestore.collection('users').doc(_userId).collection('files');
+
+      for (var file in localFiles) {
+        try {
+          final content = await file.readContent();
+          batch.set(
+              userFilesRef.doc(file.id),
+              {
+                'name': file.name,
+                'content': content,
+                'lastModified': FieldValue.serverTimestamp(),
+              },
+              SetOptions(merge: true));
+        } catch (e) {
+          debugPrint('Error preparing file ${file.id} for sync: $e');
+        }
+      }
+
+      await batch.commit().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Batch commit timeout');
+        },
+      );
 
       // Update local metadata for all synced files
       for (var file in localFiles) {
-        await _updateLocalFileMetadata(file);
+        try {
+          await _updateLocalFileMetadata(file);
+        } catch (e) {
+          debugPrint('Error updating local metadata for file ${file.id}: $e');
+        }
       }
 
       await _updateLastSyncTime();
+      debugPrint('Successfully synced ${localFiles.length} files to cloud');
     } catch (e) {
       debugPrint('Error syncing pending changes: $e');
       rethrow;

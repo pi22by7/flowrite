@@ -28,17 +28,28 @@ class SyncProvider extends ChangeNotifier {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<void> checkPendingSyncs() async {
-    if (!isSignedIn) return;
+    if (!isSignedIn) {
+      debugPrint('User not signed in, skipping cloud sync');
+      return;
+    }
 
     try {
       _isSyncing = true;
       notifyListeners();
 
+      // Check if online before syncing
+      final isOnline = await _cloudSync.isOnline;
+      if (!isOnline) {
+        debugPrint('Device is offline, skipping cloud sync');
+        return;
+      }
+
       // Sync pending changes
       await _cloudSync.syncPendingChanges();
-
+      debugPrint('Pending changes synced successfully');
     } catch (e) {
       debugPrint('Error checking pending syncs: $e');
+      rethrow; // Re-throw to let caller handle the error appropriately
     } finally {
       _isSyncing = false;
       notifyListeners();
@@ -63,7 +74,7 @@ class SyncProvider extends ChangeNotifier {
 
       // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+          await googleUser.authentication;
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(

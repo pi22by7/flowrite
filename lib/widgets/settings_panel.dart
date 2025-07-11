@@ -9,8 +9,7 @@ class SettingsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 600),
@@ -18,126 +17,251 @@ class SettingsPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Clean header
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Icon(Icons.settings, color: colorScheme.primary),
-                const SizedBox(width: 12),
-                Text(
-                  'Editor Settings',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          _buildSection(
-            title: 'Font Family',
-            child: SizedBox(
-              height: 60,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: settings.availableFonts.length,
-                itemBuilder: (context, index) {
-                  final font = settings.availableFonts[index];
-                  final isSelected = font == settings.fontFamily;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(
-                        font,
-                        style: TextStyle(
-                          fontFamily: font,
-                          color: isSelected
-                              ? colorScheme.onPrimary
-                              : colorScheme.onSurface,
-                        ),
-                      ),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        if (selected) settings.setFontFamily(font);
-                      },
-                      backgroundColor: colorScheme.surface,
-                      selectedColor: colorScheme.primary,
-                    ),
-                  );
-                },
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Text(
+              'Editor Settings',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
               ),
             ),
           ),
-          _buildSection(
+
+          // Font Family Section
+          _buildMinimalSection(
+            title: 'Font Family',
+            child: _buildFontSelector(settings, colorScheme),
+          ),
+
+          // Font Size Section
+          _buildMinimalSection(
             title: 'Font Size',
-            child: Slider(
+            child: _buildSlider(
               value: settings.fontSize,
               min: 14,
               max: 24,
               divisions: 10,
-              label: '${settings.fontSize.round()}',
+              label: '${settings.fontSize.round()}pt',
               onChanged: (value) => settings.setFontSize(value),
+              colorScheme: colorScheme,
+              context: context,
             ),
           ),
-          _buildSection(
+
+          // Line Height Section
+          _buildMinimalSection(
             title: 'Line Height',
-            child: Slider(
+            child: _buildSlider(
               value: settings.lineHeight,
               min: 1.0,
               max: 2.0,
               divisions: 20,
               label: settings.lineHeight.toStringAsFixed(1),
               onChanged: (value) => settings.setLineHeight(value),
+              colorScheme: colorScheme,
+              context: context,
+            ),
+          ),
+
+          // Preview Section
+          _buildMinimalSection(
+            title: 'Preview',
+            child: _buildPreview(settings, colorScheme),
+          ),
+
+          // Features Section
+          _buildMinimalSection(
+            title: 'Features',
+            child: _buildFeatures(settings, colorScheme),
+          ),
+
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMinimalSection({
+    required String title,
+    required Widget child,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
             ),
           ),
           const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Preview',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFontSelector(
+      SettingsProvider settings, ColorScheme colorScheme) {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: settings.availableFonts.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final font = settings.availableFonts[index];
+          final isSelected = font == settings.fontFamily;
+
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => settings.setFontFamily(font),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.outline.withAlpha(51),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? colorScheme.primary.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? colorScheme.primary.withValues(alpha: 0.3)
+                        : colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Text(
+                  font,
+                  style: TextStyle(
+                    fontFamily: font,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
               ),
             ),
-            child: Text(
-              'The quick brown fox jumps over the lazy dog',
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSlider({
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required String label,
+    required Function(double) onChanged,
+    required ColorScheme colorScheme,
+    required BuildContext context,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              min.toStringAsFixed(min == min.toInt() ? 0 : 1),
               style: TextStyle(
-                fontFamily: settings.fontFamily,
-                fontSize: settings.fontSize,
-                height: settings.lineHeight,
-                color: colorScheme.onSurface,
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
               ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ),
+            Text(
+              max.toStringAsFixed(max == max.toInt() ? 0 : 1),
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: colorScheme.primary,
+            inactiveTrackColor: colorScheme.outline.withValues(alpha: 0.2),
+            thumbColor: colorScheme.primary,
+            overlayColor: colorScheme.primary.withValues(alpha: 0.1),
+            trackHeight: 2,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+          ),
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreview(SettingsProvider settings, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sample Text',
+            style: TextStyle(
+              fontFamily: settings.fontFamily,
+              fontSize: settings.fontSize,
+              height: settings.lineHeight,
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          _buildSection(
-            title: 'Features',
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Show Syllable Count'),
-                  value: settings.showSyllables,
-                  onChanged: (value) => settings.setShowSyllables(value),
-                  activeColor: colorScheme.primary,
-                ),
-                SwitchListTile(
-                  title: const Text('Show Rhyme Colors'),
-                  value: settings.showRhymes,
-                  onChanged: (value) => settings.setShowRhymes(value),
-                  activeColor: colorScheme.primary,
-                ),
-              ],
+          const SizedBox(height: 8),
+          Text(
+            'The quick brown fox jumps over the lazy dog.\nThis shows how your text will look in the editor.',
+            style: TextStyle(
+              fontFamily: settings.fontFamily,
+              fontSize: settings.fontSize,
+              height: settings.lineHeight,
+              color: colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -145,23 +269,78 @@ class SettingsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildSection({
+  Widget _buildFeatures(SettingsProvider settings, ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildMinimalSwitch(
+          title: 'Show Syllable Count',
+          subtitle: 'Display syllable counts for each line',
+          value: settings.showSyllables,
+          onChanged: (value) => settings.setShowSyllables(value),
+          colorScheme: colorScheme,
+        ),
+        const SizedBox(height: 12),
+        _buildMinimalSwitch(
+          title: 'Show Rhyme Colors',
+          subtitle: 'Highlight rhyming words with colors',
+          value: settings.showRhymes,
+          onChanged: (value) => settings.setShowRhymes(value),
+          colorScheme: colorScheme,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMinimalSwitch({
     required String title,
-    required Widget child,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+    required ColorScheme colorScheme,
   }) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          child,
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: colorScheme.primary,
+            inactiveThumbColor: colorScheme.outline.withValues(alpha: 0.5),
+            inactiveTrackColor: colorScheme.outline.withValues(alpha: 0.1),
+          ),
         ],
       ),
     );
