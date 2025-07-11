@@ -1,15 +1,40 @@
-// lib/services/syllable_service.dart
 class SyllableService {
   static final List<String> _subSyllables = [
-    'cial', 'tial', 'cius', 'gious', 'geous', 'sion', 'tion',
-    'quiet', 'iet', 'ian', 'ua', 'ia'
+    'cial',
+    'tial',
+    'cius',
+    'gious',
+    'geous',
+    'sion',
+    'tion',
+    'quiet',
+    'iet',
+    'ian',
+    'ua',
+    'ia'
   ];
 
   static final List<String> _addSyllables = [
-    'io', 'ia', 'ii', 'io', 'eo', 'oo',
-    'ye', 'es', 'ed', 'ing',
-    'ism', 'ist', 'ity', 'en', 'er', 'ese',
-    'ful', 'gent', 'ent', 'ness',
+    'io',
+    'ia',
+    'ii',
+    'io',
+    'eo',
+    'oo',
+    'ye',
+    'es',
+    'ed',
+    'ing',
+    'ism',
+    'ist',
+    'ity',
+    'en',
+    'er',
+    'ese',
+    'ful',
+    'gent',
+    'ent',
+    'ness',
   ];
 
   static final RegExp _consonantCluster = RegExp(r'[bcdfghjklmnpqrstvwxz]{2,}');
@@ -213,55 +238,55 @@ class SyllableService {
   };
 
   static const Map<String, int> _suffixes = {
-  'able': 2,
-  'ably': 2,
-  'age': 1,
-  'al': 1,
-  'ally': 2,
-  'ance': 1,
-  'ant': 1,
-  'ary': 2,
-  'ation': 2,
-  'ative': 2,
-  'ed': 1,
-  'en': 1,
-  'ence': 1,
-  'ent': 1,
-  'er': 1,
-  'ery': 2,
-  'es': 1,
-  'est': 1,
-  'ful': 1,
-  'ial': 2,
-  'ible': 2,
-  'ibly': 2,
-  'ic': 1,
-  'ical': 2,
-  'ically': 3,
-  'ice': 1,
-  'ify': 2,
-  'ing': 1,
-  'ion': 1,
-  'ious': 2,
-  'ish': 1,
-  'ism': 2,
-  'ist': 1,
-  'ity': 2,
-  'ive': 1,
-  'ize': 1,
-  'less': 1,
-  'ly': 1,
-  'ment': 1,
-  'ness': 1,
-  'or': 1,
-  'ous': 1,
-  'ship': 1,
-  'ty': 1,
-  'ure': 1,
-  'ward': 1,
-  'wards': 1,
-  'wise': 1,
-  'y': 1,
+    'able': 2,
+    'ably': 2,
+    'age': 1,
+    'al': 1,
+    'ally': 2,
+    'ance': 1,
+    'ant': 1,
+    'ary': 2,
+    'ation': 2,
+    'ative': 2,
+    'ed': 1,
+    'en': 1,
+    'ence': 1,
+    'ent': 1,
+    'er': 1,
+    'ery': 2,
+    'es': 1,
+    'est': 1,
+    'ful': 1,
+    'ial': 2,
+    'ible': 2,
+    'ibly': 2,
+    'ic': 1,
+    'ical': 2,
+    'ically': 3,
+    'ice': 1,
+    'ify': 2,
+    'ing': 1,
+    'ion': 1,
+    'ious': 2,
+    'ish': 1,
+    'ism': 2,
+    'ist': 1,
+    'ity': 2,
+    'ive': 1,
+    'ize': 1,
+    'less': 1,
+    'ly': 1,
+    'ment': 1,
+    'ness': 1,
+    'or': 1,
+    'ous': 1,
+    'ship': 1,
+    'ty': 1,
+    'ure': 1,
+    'ward': 1,
+    'wards': 1,
+    'wise': 1,
+    'y': 1,
   };
 
   bool _isConsonant(String char) {
@@ -304,7 +329,8 @@ class SyllableService {
 
   int _handleCompoundWord(String word) {
     if (word.contains('-')) {
-      return word.split('-')
+      return word
+          .split('-')
           .map((part) => countSyllables(part))
           .reduce((a, b) => a + b);
     }
@@ -353,8 +379,7 @@ class SyllableService {
   }
 
   bool _isValidWord(String word) {
-    return word.isNotEmpty &&
-        RegExp(r'^[a-zA-Z\-]+$').hasMatch(word);
+    return word.isNotEmpty && RegExp(r'^[a-zA-Z\-]+$').hasMatch(word);
   }
 
   int _handleExceptions(String word) {

@@ -96,6 +96,8 @@ To get a local copy up and running, follow these simple steps.
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
+We have a [TODO list](TODO.md) of features we'd like to add. If you'd like to contribute, please check out our [contributing guidelines](CONTRIBUTING.md).
+
 1.  Fork the Project
 2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
 3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
@@ -108,7 +110,7 @@ This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE)
 
 ## 📧 Contact
 
-π - [@pi_22by7](https://www.threads.net/@pi_22by7) - hey@pi22by7.me
+π - talk@pi22by7.me
 
 Project Link: [https://github.com/pi22by7/flowrite](https://github.com/pi22by7/flowrite)
 

@@ -1,4 +1,3 @@
-// lib/models/writing_file.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -95,11 +94,13 @@ class WritingFile {
     try {
       final prefs = await SharedPreferences.getInstance();
       final key = 'file_metadata_$id';
-      await prefs.setString(key, json.encode({
-        'id': id,
-        'name': name,
-        'lastModified': lastModified.toIso8601String(),
-      }));
+      await prefs.setString(
+          key,
+          json.encode({
+            'id': id,
+            'name': name,
+            'lastModified': lastModified.toIso8601String(),
+          }));
     } catch (e) {
       debugPrint('Error saving metadata: $e');
     }
@@ -165,10 +166,10 @@ class WritingFile {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is WritingFile &&
-              runtimeType == other.runtimeType &&
-              id == other.id &&
-              name == other.name;
+      other is WritingFile &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name;
 
   @override
   int get hashCode => id.hashCode ^ name.hashCode;
