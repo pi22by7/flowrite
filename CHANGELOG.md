@@ -7,16 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.0] - 2025-07-11
+## [2.0.0] - 2025-07-11
 
-### Added
-- New features and improvements
+### Major
+
+- Complete CI/CD pipeline for Android releases
+- Automated build and release workflow with GitHub Actions
+- Multi-platform build scripts (now focused on Android)
+- Material 3 expressive upgrade with dynamic colors and modern typography
+- File sorting and streamlined creation flow
+- Automated screenshot generation system (integration tests)
+- Comprehensive documentation and contributing guidelines
+- Code of conduct and issue templates
 
 ### Changed
-- Updates and modifications
+
+- Improved workflow triggers (only builds Android)
+- Updated README with new badges and versioning
+- Enhanced sync reliability and modernized UI
+- Better theme integration and UI consistency
 
 ### Fixed
-- Bug fixes
+
+- Updated Firebase packages and resolved Java 8 warnings
+- Fixed Google Sign-In SHA-1 configuration
+- Improved syllable counting and offline/cloud sync reliability
 
 ### Planned
 

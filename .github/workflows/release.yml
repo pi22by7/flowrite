@@ -22,7 +22,6 @@ jobs:
       build-number: ${{ steps.version.outputs.build-number }}
     steps:
       - uses: actions/checkout@v4
-      
       - name: Extract version
         id: version
         run: |
@@ -40,34 +39,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '11'
-      
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
-      
       - name: Install dependencies
         run: flutter pub get
-      
       - name: Build Android APK
         run: |
           flutter build apk --release \
             --build-name=${{ needs.prepare.outputs.version }} \
             --build-number=${{ needs.prepare.outputs.build-number }}
-      
       - name: Build Android App Bundle
         run: |
           flutter build appbundle --release \
             --build-name=${{ needs.prepare.outputs.version }} \
             --build-number=${{ needs.prepare.outputs.build-number }}
-      
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -76,125 +69,17 @@ jobs:
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
 
-  build-linux:
-    needs: prepare
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-      
-      - name: Install dependencies
-        run: flutter pub get
-      
-      - name: Enable Linux desktop
-        run: flutter config --enable-linux-desktop
-      
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-      
-      - name: Build Linux
-        run: |
-          flutter build linux --release \
-            --build-name=${{ needs.prepare.outputs.version }} \
-            --build-number=${{ needs.prepare.outputs.build-number }}
-      
-      - name: Package Linux
-        run: |
-          cd build/linux/x64/release/bundle
-          tar -czf ../../../../../flowrite-linux-x64.tar.gz .
-      
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-release
-          path: flowrite-linux-x64.tar.gz
-
-  build-windows:
-    needs: prepare
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-      
-      - name: Install dependencies
-        run: flutter pub get
-      
-      - name: Enable Windows desktop
-        run: flutter config --enable-windows-desktop
-      
-      - name: Build Windows
-        run: |
-          flutter build windows --release `
-            --build-name=${{ needs.prepare.outputs.version }} `
-            --build-number=${{ needs.prepare.outputs.build-number }}
-      
-      - name: Package Windows
-        run: |
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "flowrite-windows-x64.zip"
-      
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-release
-          path: flowrite-windows-x64.zip
-
-  build-macos:
-    needs: prepare
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-      
-      - name: Install dependencies
-        run: flutter pub get
-      
-      - name: Enable macOS desktop
-        run: flutter config --enable-macos-desktop
-      
-      - name: Build macOS
-        run: |
-          flutter build macos --release \
-            --build-name=${{ needs.prepare.outputs.version }} \
-            --build-number=${{ needs.prepare.outputs.build-number }}
-      
-      - name: Package macOS
-        run: |
-          cd build/macos/Build/Products/Release
-          tar -czf ../../../../../flowrite-macos.tar.gz flowrite.app
-      
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-release
-          path: flowrite-macos.tar.gz
-
   create-release:
-    needs: [prepare, build-android, build-linux, build-windows, build-macos]
+    needs: [prepare, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Download all artifacts
+      - name: Download Android artifacts
         uses: actions/download-artifact@v4
-      
+        with:
+          name: android-release
+          path: ./android-release
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -206,8 +91,5 @@ jobs:
           files: |
             android-release/app-release.apk
             android-release/app-release.aab
-            linux-release/flowrite-linux-x64.tar.gz
-            windows-release/flowrite-windows-x64.zip
-            macos-release/flowrite-macos.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

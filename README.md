@@ -7,9 +7,8 @@
 
 [![Release](https://img.shields.io/github/v/release/pi22by7/flowrite?style=for-the-badge&logo=github)](https://github.com/pi22by7/flowrite/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/release.yml?style=for-the-badge&logo=github-actions)](https://github.com/pi22by7/flowrite/actions/workflows/release.yml)
-[![Screenshots](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/screenshots.yml?style=for-the-badge&logo=github-actions&label=Screenshots)](https://github.com/pi22by7/flowrite/actions/workflows/screenshots.yml)
 
-**Current Version: v1.1.0** | **Flutter: 3.24.0** | **Build: 2**
+**Current Version: v2.0.0** | **Flutter: 3.24.0**
 
 Flowrite is a modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. With seamless cloud sync, a clean, minimalist interface, and robust offline support, your creative process has never been more fluid.
 
