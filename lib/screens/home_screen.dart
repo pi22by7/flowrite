@@ -12,6 +12,8 @@ import 'editor_screen.dart';
 import '../models/writing_file.dart';
 import '../services/file_service.dart';
 
+enum SortOrder { lastModified, nameAsc, nameDesc }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final FileService _fileService = FileService();
   final CloudSyncService _cloudSync = CloudSyncService();
   List<WritingFile> _files = [];
+  SortOrder _currentSortOrder = SortOrder.lastModified;
   StreamSubscription? _cloudSubscription;
   bool _isLoading = true;
   bool _isInitialized = false;
@@ -55,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         setState(() {
           _files = files;
+          _sortFiles();
           _isLoading = false;
         });
       }
@@ -80,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _cloudSubscription = _cloudSync.getFilesStream().listen((cloudFiles) {
           setState(() {
             _files = cloudFiles;
+            _sortFiles();
           });
         });
       } else {
@@ -134,6 +139,20 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _sortFiles() {
+    switch (_currentSortOrder) {
+      case SortOrder.lastModified:
+        _files.sort((a, b) => b.lastModified.compareTo(a.lastModified));
+        break;
+      case SortOrder.nameAsc:
+        _files.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case SortOrder.nameDesc:
+        _files.sort((a, b) => b.name.compareTo(a.name));
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -154,6 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             _buildMinimalAppBar(themeProvider, colorScheme),
+            if (_files.isNotEmpty) _buildSortAndFilterControls(colorScheme),
             Expanded(
               child: _files.isEmpty
                   ? _buildMinimalEmptyState(colorScheme)
@@ -169,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildMinimalAppBar(
       ThemeProvider themeProvider, ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
       child: Row(
         children: [
           Expanded(
@@ -222,6 +242,71 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSortAndFilterControls(ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          _buildSortButton(colorScheme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSortButton(ColorScheme colorScheme) {
+    return PopupMenuButton<SortOrder>(
+      onSelected: (SortOrder result) {
+        setState(() {
+          _currentSortOrder = result;
+          _sortFiles();
+        });
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<SortOrder>>[
+        const PopupMenuItem<SortOrder>(
+          value: SortOrder.lastModified,
+          child: Text('Sort by Last Modified'),
+        ),
+        const PopupMenuItem<SortOrder>(
+          value: SortOrder.nameAsc,
+          child: Text('Sort by Name (A-Z)'),
+        ),
+        const PopupMenuItem<SortOrder>(
+          value: SortOrder.nameDesc,
+          child: Text('Sort by Name (Z-A)'),
+        ),
+      ],
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.sort_rounded,
+                size: 16,
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Sort',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -479,7 +564,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => EditorScreen(file: file),
       ),
-    );
+    ).then((_) => _loadFiles());
   }
 
   void _renameFile(WritingFile file) async {
@@ -510,9 +595,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (name != null && name.isNotEmpty) {
       final file = await _fileService.createFile(name);
-      setState(() {
-        _files.add(file);
-      });
+      if (mounted) {
+        _openFile(file);
+      }
     }
   }
 
