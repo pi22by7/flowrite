@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-07-11
+
+### Added
+- New features and improvements
+
+### Changed
+- Updates and modifications
+
+### Fixed
+- Bug fixes
+
 ### Planned
+
 - Enhanced search functionality
 - Theme customization options
 - Export/import capabilities
@@ -17,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2025-07-11
 
 ### Added
+
 - Automated build and release workflows for multi-platform deployment
 - Comprehensive CI/CD pipeline with GitHub Actions
 - Automated screenshot generation system with integration tests
@@ -29,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated changelog management
 
 ### Changed
+
 - Upgraded to Material 3 with dynamic colors and modern typography
 - Enhanced sync reliability and modernized UI
 - Improved workflow triggers (no longer on every push, only when necessary)
@@ -37,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better theme integration across all screens
 
 ### Fixed
+
 - Updated Firebase packages to latest versions
 - Resolved Java 8 warnings
 - Fixed Google Sign-In SHA-1 configuration
@@ -47,21 +62,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2025-07-11
 
 ### Added
+
 - Enhanced sync reliability features
 - Modern UI improvements
 - Better error handling for sync operations
 
 ### Changed
+
 - Minor UI/UX improvements
 - Configuration updates
 
 ### Fixed
+
 - Firebase configuration improvements
 - Various minor bug fixes
 
 ## [1.0.0] - 2024-11-15
 
 ### Added
+
 - Initial release of Flowrite
 - Clean, minimalist writing interface
 - Firebase authentication and cloud sync
