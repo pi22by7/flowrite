@@ -5,12 +5,15 @@ on:
   push:
     branches: [ main ]
     paths: 
-      - 'lib/**'
+      - 'lib/screens/**'
+      - 'lib/widgets/**'
       - 'integration_test/**'
+      - 'assets/screenshots/**'
   pull_request:
     branches: [ main ]
     paths: 
-      - 'lib/**'
+      - 'lib/screens/**'
+      - 'lib/widgets/**'
       - 'integration_test/**'
 
 jobs:

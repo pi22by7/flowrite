@@ -3,7 +3,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 
 class ThemeProvider extends ChangeNotifier {
   bool _isDarkMode = false;
-  bool _useDynamicColors = false;
+  bool _useDynamicColors = true;
   ThemeData? _dynamicLightTheme;
   ThemeData? _dynamicDarkTheme;
 

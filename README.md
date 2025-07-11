@@ -5,6 +5,12 @@
 ![Firebase](https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/agpl-3.0)
 
+[![Release](https://img.shields.io/github/v/release/pi22by7/flowrite?style=for-the-badge&logo=github)](https://github.com/pi22by7/flowrite/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/release.yml?style=for-the-badge&logo=github-actions)](https://github.com/pi22by7/flowrite/actions/workflows/release.yml)
+[![Screenshots](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/screenshots.yml?style=for-the-badge&logo=github-actions&label=Screenshots)](https://github.com/pi22by7/flowrite/actions/workflows/screenshots.yml)
+
+**Current Version: v1.1.0** | **Flutter: 3.24.0** | **Build: 2**
+
 Flowrite is a modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. With seamless cloud sync, a clean, minimalist interface, and robust offline support, your creative process has never been more fluid.
 
 ## 📱 Screenshots
@@ -144,7 +150,7 @@ flutter test test/
   - iOS: `GoogleService-Info.plist`
 - An editor like Android Studio or VS Code
 
-### Installation
+### Installation & Development
 
 1.  Clone the repository
     ```sh
@@ -162,6 +168,58 @@ flutter test test/
     ```sh
     flutter run
     ```
+
+### Building for Release
+
+We provide convenient build scripts for creating release builds:
+
+#### Quick Build
+
+```sh
+# Build for Android
+./scripts/build.sh android
+
+# Build for Linux
+./scripts/build.sh linux
+
+# Build for all platforms (where supported)
+./scripts/build.sh all
+```
+
+#### Creating a Release
+
+```sh
+# Bump version and create release tag
+./scripts/release.sh 1.2.0
+
+# Push to trigger automated release
+git push origin main && git push origin v1.2.0
+```
+
+#### Manual Platform Builds
+
+```sh
+# Android
+flutter build apk --release
+flutter build appbundle --release
+
+# Linux
+flutter build linux --release
+
+# Web
+flutter build web --release
+```
+
+### Download Releases
+
+Pre-built releases are available for multiple platforms:
+
+- **Android**: APK and AAB files
+- **Linux**: Portable tar.gz packages
+- **Windows**: Portable zip packages
+- **macOS**: Portable app bundles
+
+[📥 Download Latest Release](https://github.com/pi22by7/flowrite/releases/latest)
 
 ## 🏗️ Built With
 
@@ -196,6 +254,7 @@ flutter test test/
 - [x] File conflict resolution
 - [x] Material 3 UI with dynamic color
 - [x] File sorting
+- [x] Implement CI/CD pipeline for automated builds and releases
 - [ ] Markdown support
 - [ ] In-line formatting
 - [ ] Comprehensive error handling and user feedback
@@ -203,7 +262,14 @@ flutter test test/
 - [ ] Add comprehensive testing (Unit, Widget, Integration)
 - [ ] Improve error reporting (e.g., Crashlytics)
 - [ ] Add analytics to understand user behavior
-- [ ] Implement CI/CD pipeline for automated builds and releases
+
+## 📚 Documentation
+
+- **[Build & Release Guide](docs/BUILD_RELEASE_GUIDE.md)** - Comprehensive guide for building and releasing the app
+- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** - Community guidelines
+- **[TODO](TODO.md)** - Planned features and improvements
+- **[Changelog](CHANGELOG.md)** - Version history and changes
 
 ## 🤝 Contributing
 
@@ -216,6 +282,8 @@ We have a [TODO list](TODO.md) of features we'd like to add. If you'd like to co
 3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4.  Push to the Branch (`git push origin feature/AmazingFeature`)
 5.  Open a Pull Request
+
+For development and building instructions, see our [Build & Release Guide](docs/BUILD_RELEASE_GUIDE.md).
 
 ## 📄 License
 
