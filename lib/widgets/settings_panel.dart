@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsPanel extends StatelessWidget {
   const SettingsPanel({super.key});
@@ -22,23 +23,22 @@ class SettingsPanel extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
             child: Text(
               'Editor Settings',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSurface,
-              ),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ),
 
           // Font Family Section
           _buildMinimalSection(
+            context,
             title: 'Font Family',
             child: _buildFontSelector(settings, colorScheme),
           ),
 
           // Font Size Section
           _buildMinimalSection(
+            context,
             title: 'Font Size',
             child: _buildSlider(
               value: settings.fontSize,
@@ -54,6 +54,7 @@ class SettingsPanel extends StatelessWidget {
 
           // Line Height Section
           _buildMinimalSection(
+            context,
             title: 'Line Height',
             child: _buildSlider(
               value: settings.lineHeight,
@@ -69,12 +70,14 @@ class SettingsPanel extends StatelessWidget {
 
           // Preview Section
           _buildMinimalSection(
+            context,
             title: 'Preview',
             child: _buildPreview(settings, colorScheme),
           ),
 
           // Features Section
           _buildMinimalSection(
+            context,
             title: 'Features',
             child: _buildFeatures(settings, colorScheme),
           ),
@@ -85,7 +88,8 @@ class SettingsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildMinimalSection({
+  Widget _buildMinimalSection(
+    BuildContext context, {
     required String title,
     required Widget child,
   }) {
@@ -96,12 +100,9 @@ class SettingsPanel extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.2,
-            ),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 16),
           child,
@@ -270,24 +271,37 @@ class SettingsPanel extends StatelessWidget {
   }
 
   Widget _buildFeatures(SettingsProvider settings, ColorScheme colorScheme) {
-    return Column(
-      children: [
-        _buildMinimalSwitch(
-          title: 'Show Syllable Count',
-          subtitle: 'Display syllable counts for each line',
-          value: settings.showSyllables,
-          onChanged: (value) => settings.setShowSyllables(value),
-          colorScheme: colorScheme,
-        ),
-        const SizedBox(height: 12),
-        _buildMinimalSwitch(
-          title: 'Show Rhyme Colors',
-          subtitle: 'Highlight rhyming words with colors',
-          value: settings.showRhymes,
-          onChanged: (value) => settings.setShowRhymes(value),
-          colorScheme: colorScheme,
-        ),
-      ],
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Column(
+          children: [
+            _buildMinimalSwitch(
+              title: 'Dynamic Colors',
+              subtitle:
+                  'Use Material You colors from your wallpaper (Android 12+)',
+              value: themeProvider.useDynamicColors,
+              onChanged: (value) => themeProvider.toggleDynamicColors(),
+              colorScheme: colorScheme,
+            ),
+            const SizedBox(height: 12),
+            _buildMinimalSwitch(
+              title: 'Show Syllable Count',
+              subtitle: 'Display syllable counts for each line',
+              value: settings.showSyllables,
+              onChanged: (value) => settings.setShowSyllables(value),
+              colorScheme: colorScheme,
+            ),
+            const SizedBox(height: 12),
+            _buildMinimalSwitch(
+              title: 'Show Rhyme Colors',
+              subtitle: 'Highlight rhyming words with colors',
+              value: settings.showRhymes,
+              onChanged: (value) => settings.setShowRhymes(value),
+              colorScheme: colorScheme,
+            ),
+          ],
+        );
+      },
     );
   }
 

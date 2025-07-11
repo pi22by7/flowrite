@@ -239,23 +239,18 @@ class _EditorScreenState extends State<EditorScreen> {
               children: [
                 Text(
                   widget.file.name,
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onSurface,
-                  ),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
                 ),
               ],
             ),

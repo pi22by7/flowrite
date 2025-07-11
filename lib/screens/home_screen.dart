@@ -178,25 +178,19 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Flowrite',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 28,
-                    fontWeight: FontWeight.w300,
-                    color: colorScheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: -0.5,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _files.isEmpty
                       ? 'Start writing'
                       : '${_files.length} ${_files.length == 1 ? 'song' : 'songs'}',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    letterSpacing: 0.2,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
                 ),
               ],
             ),
@@ -279,21 +273,16 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 32),
           Text(
             'No songs yet',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-              color: colorScheme.onSurface,
-            ),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Tap the + button to create your first song',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
           ),
         ],
       ),
@@ -316,12 +305,12 @@ class _HomeScreenState extends State<HomeScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _openFile(file),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: colorScheme.outline.withValues(alpha: 0.1),
             ),
@@ -348,23 +337,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       file.name,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.onSurface,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Tap to edit',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
                     ),
                   ],
                 ),
@@ -417,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: colorScheme.primary.withValues(alpha: 0.3),
@@ -430,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: _createNewFile,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Row(
@@ -444,13 +428,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 8),
                 Text(
                   'New Song',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onPrimary,
-                    letterSpacing: 0.2,
-                  ),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: colorScheme.onPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
               ],
             ),
