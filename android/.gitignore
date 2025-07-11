@@ -11,3 +11,13 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Additional Android Security Files
+upload-keystore.jks
+release-keystore.jks
+google-services-release.json
+firebase-debug.json
+
+# Signing configurations
+signing.properties
+release.properties

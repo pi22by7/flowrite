@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1003901213981-efdkmsi4kblg747ou2glgffm3i5s3fli.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "me.pi22by7.flowrite",
+            "certificate_hash": "bbaed5defece4793e53b4973d5b8477aaa182ff0"
+          }
+        },
+        {
           "client_id": "1003901213981-shuf5p11nvea99mktr8hbml8coi6r2af.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -41,3 +41,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Environment and Configuration Files
+.env
+.env.*
+!.env.example
+
+# Firebase Service Account Keys
+**/service-account-*.json
+**/serviceAccountKey.json
+firebase-adminsdk-*.json
+
+# Other Secret Files
+secrets.json
+config/secrets.yml
