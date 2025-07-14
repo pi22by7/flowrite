@@ -16,6 +16,13 @@ on:
       - 'lib/widgets/**'
       - 'integration_test/**'
 
+permissions:
+  contents: write
+  actions: read
+
+env:
+  FLUTTER_VERSION: '3.32.6'
+
 jobs:
   screenshots:
     runs-on: ubuntu-latest
@@ -27,16 +34,19 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '11'
+        java-version: '17'
     
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0'
+        flutter-version: ${{ env.FLUTTER_VERSION }}
         channel: 'stable'
     
     - name: Install dependencies
       run: flutter pub get
+    
+    - name: Analyze code
+      run: flutter analyze --no-fatal-infos
     
     - name: Enable Linux desktop
       run: flutter config --enable-linux-desktop
@@ -49,12 +59,30 @@ jobs:
     - name: Build for Linux
       run: flutter build linux --release
     
+    - name: Prepare screenshots directory
+      run: |
+        mkdir -p screenshots
+        mkdir -p assets/screenshots
+        echo "Screenshots directories prepared"
+    
+    - name: Verify integration test
+      run: |
+        if [ -f "integration_test/app_test.dart" ]; then
+          echo "Integration test file found"
+          head -10 integration_test/app_test.dart
+        else
+          echo "ERROR: Integration test file not found!"
+          exit 1
+        fi
+    
     - name: Generate screenshots
       run: |
         export DISPLAY=:99
         sudo Xvfb -ac :99 -screen 0 1280x1024x24 > /dev/null 2>&1 &
         sleep 3
-        flutter test integration_test/app_test.dart -d linux
+        echo "Starting screenshot generation..."
+        flutter test integration_test/app_test.dart -d linux --verbose
+        echo "Screenshot generation completed"
       continue-on-error: true
     
     - name: Upload screenshots
@@ -65,7 +93,9 @@ jobs:
         path: |
           screenshots/
           assets/screenshots/
+          integration_test/screenshots/
         retention-days: 30
+        if-no-files-found: warn
     
     - name: Commit screenshots
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -73,5 +103,10 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add assets/screenshots/
-        git diff --staged --quiet || git commit -m "Update screenshots [skip ci]"
-        git push
+        if ! git diff --staged --quiet; then
+          echo "Screenshots updated, committing changes..."
+          git commit -m "Update screenshots [skip ci]"
+          git push
+        else
+          echo "No screenshot changes to commit"
+        fi
