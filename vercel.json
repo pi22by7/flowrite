@@ -11,7 +11,16 @@
     ],
     "headers": [
         {
-            "source": "/:path*",
+            "source": "/",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "no-cache, no-store, must-revalidate"
+                }
+            ]
+        },
+        {
+            "source": "/(.*)",
             "headers": [
                 {
                     "key": "X-Frame-Options",
@@ -32,11 +41,19 @@
             ]
         },
         {
-            "source": "/:path*\\.(js|css|wasm|png|jpg|jpeg|gif|ico|svg|ttf|woff|woff2)",
+            "source": "/(.*\\.(js|css|wasm|png|jpg|jpeg|gif|ico|svg|ttf|woff|woff2))",
             "headers": [
                 {
                     "key": "Cache-Control",
                     "value": "public, max-age=31536000, immutable"
+                },
+                {
+                    "key": "Cross-Origin-Embedder-Policy",
+                    "value": "require-corp"
+                },
+                {
+                    "key": "Cross-Origin-Opener-Policy",
+                    "value": "same-origin"
                 }
             ]
         },

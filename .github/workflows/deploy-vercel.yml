@@ -33,13 +33,43 @@ jobs:
       run: flutter pub get
       
     - name: Build web app
-      run: flutter build web --release
+      run: |
+        flutter build web --release --base-href /
+        
+    - name: Copy Vercel configuration
+      run: cp vercel.json build/web/
+      
+    - name: Verify build output
+      run: |
+        echo "Contents of build/web:"
+        ls -la build/web/
+        echo "Checking essential files exist:"
+        [ -f "build/web/index.html" ] && echo "✓ index.html exists" || echo "✗ index.html missing"
+        [ -f "build/web/main.dart.js" ] && echo "✓ main.dart.js exists" || echo "✗ main.dart.js missing"
+        [ -f "build/web/flutter_bootstrap.js" ] && echo "✓ flutter_bootstrap.js exists" || echo "✗ flutter_bootstrap.js missing"
+        [ -f "build/web/vercel.json" ] && echo "✓ vercel.json exists" || echo "✗ vercel.json missing"
+        echo "Build directory size:"
+        du -sh build/web/
+        
+    - name: Verify Vercel configuration
+      run: |
+        echo "Vercel project setup:"
+        echo "Working directory: ./build/web"
+        echo "Vercel args: --prod --yes"
+        echo "GitHub comment: enabled"
+        echo "GitHub deployment: disabled"
       
     - name: Deploy to Vercel
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
         working-directory: ./build/web
-        vercel-args: '--prod'
+        vercel-args: '--prod --yes'
+        github-comment: true
+        github-deployment: false
+      env:
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
