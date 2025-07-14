@@ -80,8 +80,8 @@ SCREENSHOTS_GENERATED=false
 if echo "$DEVICE_OUTPUT" | grep -q "android"; then
     print_status "Found Android device/emulator"
     
-    # Get the emulator ID (more robust parsing)
-    ANDROID_DEVICE=$(echo "$DEVICE_OUTPUT" | grep "android" | head -n 1 | sed 's/.*• \([^ ]*\) •.*/\1/')
+    # Get the device ID (extract the device ID between the first set of bullet points)
+    ANDROID_DEVICE=$(echo "$DEVICE_OUTPUT" | grep "android" | head -n 1 | awk -F'•' '{print $2}' | xargs)
     
     if [ -n "$ANDROID_DEVICE" ]; then
         print_status "Running tests on Android device: $ANDROID_DEVICE"
@@ -92,11 +92,7 @@ if echo "$DEVICE_OUTPUT" | grep -q "android"; then
             # Extract screenshots from JSON
             if [ -f "build/integration_response_data.json" ]; then
                 print_status "Extracting screenshots from test data..."
-                mkdir -p assets/screenshots/android
-                python3 scripts/extract_screenshots.py build/integration_response_data.json assets/screenshots/android
-                
-                # Also copy to main screenshots directory
-                cp assets/screenshots/android/*.png assets/screenshots/ 2>/dev/null || true
+                python3 scripts/extract_screenshots.py build/integration_response_data.json assets/screenshots
             fi
         fi
     fi
@@ -106,7 +102,7 @@ fi
 if echo "$DEVICE_OUTPUT" | grep -q "ios"; then
     print_status "Found iOS device/simulator"
     
-    IOS_DEVICE=$(echo "$DEVICE_OUTPUT" | grep "ios" | head -n 1 | sed 's/.*• \([^ ]*\) •.*/\1/')
+    IOS_DEVICE=$(echo "$DEVICE_OUTPUT" | grep "ios" | head -n 1 | awk -F'•' '{print $2}' | xargs)
     
     if [ -n "$IOS_DEVICE" ]; then
         print_status "Running tests on iOS device: $IOS_DEVICE"
@@ -116,11 +112,7 @@ if echo "$DEVICE_OUTPUT" | grep -q "ios"; then
             
             if [ -f "build/integration_response_data.json" ]; then
                 print_status "Extracting screenshots from test data..."
-                mkdir -p assets/screenshots/ios
-                python3 scripts/extract_screenshots.py build/integration_response_data.json assets/screenshots/ios
-                
-                # Also copy to main screenshots directory
-                cp assets/screenshots/ios/*.png assets/screenshots/ 2>/dev/null || true
+                python3 scripts/extract_screenshots.py build/integration_response_data.json assets/screenshots
             fi
         fi
     fi

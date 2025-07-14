@@ -180,18 +180,32 @@ Future<void> toggleToDarkTheme(
   debugPrint(
       'Light mode button found: ${lightModeButtonFinder.evaluate().isNotEmpty}');
 
-  // Try to toggle to dark theme by tapping the theme button
+  // Try to toggle to dark theme by clicking the theme button twice
   if (systemModeButtonFinder.evaluate().isNotEmpty) {
-    debugPrint('App is in system mode, toggling to light mode...');
-    await tester.tap(systemModeButtonFinder.first, warnIfMissed: false);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    debugPrint('App is in system mode, need to toggle twice to reach dark mode...');
     
-    // Look for dark mode button after first toggle
-    final newDarkModeButtonFinder = find.byIcon(Icons.dark_mode_rounded);
-    if (newDarkModeButtonFinder.evaluate().isNotEmpty) {
-      debugPrint('Now toggling to dark mode...');
-      await tester.tap(newDarkModeButtonFinder.first, warnIfMissed: false);
+    // First toggle: System → Light
+    debugPrint('First toggle: System → Light');
+    await tester.tap(systemModeButtonFinder.first, warnIfMissed: false);
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+    
+    // Find the theme button again (it should now show dark mode icon)
+    debugPrint('Looking for theme button for second toggle...');
+    final anyThemeIcon = find.byWidgetPredicate((widget) => 
+      widget is Icon && (
+        widget.icon == Icons.brightness_auto_rounded ||
+        widget.icon == Icons.dark_mode_rounded ||
+        widget.icon == Icons.light_mode_rounded
+      )
+    );
+    
+    if (anyThemeIcon.evaluate().isNotEmpty) {
+      debugPrint('Found theme button, making second toggle: Light → Dark');
+      await tester.tap(anyThemeIcon.first, warnIfMissed: false);
       await tester.pumpAndSettle(const Duration(seconds: 3));
+      debugPrint('Second toggle completed');
+    } else {
+      debugPrint('Could not find theme button for second toggle');
     }
     
     debugPrint('Taking dark_theme screenshot...');
