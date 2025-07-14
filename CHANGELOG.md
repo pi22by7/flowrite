@@ -5,21 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
 
-### Fixed
+## [3.2.0] - 2025-07-14
+
+### ✨ Added
+- **Production Deployment**: Complete Vercel integration with custom domain support
+- **Enhanced Web Experience**: Improved SEO metadata and web build optimization
+- **GitHub Actions Workflow**: Automated Vercel deployment with proper Flutter build environment
+
+### 🔧 Fixed
+- **OAuth Authentication**: Fixed OAuth redirect URLs for production deployment with custom domain support
+- **Multi-Platform Builds**: Improved macOS 10.15+ compatibility and Windows PowerShell syntax
+- **Build Pipeline**: Enhanced Android artifact naming and deployment workflow authentication
 - **macOS Build**: Updated deployment target to 10.15+ for Google Sign-In compatibility
 - **Windows Build**: Fixed PowerShell syntax for environment file creation in CI/CD
-- **Multi-Platform Builds**: Improved platform-specific build configurations
 
-### Technical
+### 🚀 Improved
+- **Web Deployment**: Optimized Vercel routing patterns and build verification
+- **Development Workflow**: Better error handling and build verification in CI/CD pipeline
+- **Cross-Platform Support**: Standardized build processes across all platforms
+
+### 🔧 Technical
+- **Vercel Configuration**: Enhanced web metadata, SEO optimization, and routing
+- **Flutter Version**: Updated to 3.32.6 in deployment workflow
+- **Build Artifacts**: Improved naming conventions and multi-platform compatibility
 - **Xcode Project**: Updated macOS deployment target in all build configurations
 - **GitHub Actions**: Fixed Windows PowerShell script syntax for environment variables
 - **Build Pipeline**: Enhanced error handling for platform-specific dependencies
@@ -27,16 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.1.0] - 2025-07-14
 
 ### ✨ Added
+
 - **Settings Persistence**: Theme preferences now persist across app restarts
 - **Automatic Theme Restoration**: App remembers your last theme choice (System/Light/Dark)
 - **Cross-Platform Storage**: Settings sync works on all platforms (mobile, desktop, web)
 
 ### 🚀 Improved
+
 - **Better Theme Experience**: Seamless theme switching with persistent preferences
 - **Faster App Startup**: Theme applied immediately on launch without flickering
 - **Reliable Storage**: Robust error handling for settings persistence
 
 ### 🔧 Technical
+
 - **SharedPreferences Integration**: Platform-appropriate storage mechanisms
 - **State Management**: Enhanced ThemeProvider with persistent state
 - **Error Handling**: Graceful fallbacks if storage is unavailable
