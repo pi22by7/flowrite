@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SharedPreferences Integration**: Platform-appropriate storage mechanisms
 - **State Management**: Enhanced ThemeProvider with persistent state
 - **Error Handling**: Graceful fallbacks if storage is unavailable
+- **macOS Deployment Target**: Updated to 10.15+ for compatibility with latest Google Sign-In
 
 ## [3.0.0] - 2025-07-14
 

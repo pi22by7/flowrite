@@ -258,12 +258,13 @@ jobs:
         run: flutter config --enable-windows-desktop
       - name: Create .env file
         run: |
-          echo SUPABASE_URL=${{ secrets.SUPABASE_URL }} > .env
-          echo SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} >> .env
-          echo GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} >> .env
-          echo GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }} >> .env
-          echo GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }} >> .env
-          echo DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" >> .env
+          echo "GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}" >> .env
+          echo "GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}" >> .env
+          echo "DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback" >> .env
+        shell: powershell
       - name: Install dependencies
         run: flutter pub get
       - name: Build Windows
