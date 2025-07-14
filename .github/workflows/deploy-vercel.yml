@@ -68,7 +68,6 @@ jobs:
         echo "Project linking: Automatic via .vercel/project.json"
       
     - name: Deploy to Vercel
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
         npm install -g vercel@latest
         cd build/web
