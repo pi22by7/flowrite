@@ -1,17 +1,14 @@
-# ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
-
-![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)write 📝
+# Flowrite 📝
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
-![Firebase](https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/agpl-3.0)
 
 [![Release](https://img.shields.io/github/v/release/pi22by7/flowrite?style=for-the-badge&logo=github)](https://github.com/pi22by7/flowrite/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/release.yml?style=for-the-badge&logo=github-actions)](https://github.com/pi22by7/flowrite/actions/workflows/release.yml)
 
-**Current Version: v2.0.0** | **Flutter: 3.32.6**
+**Current Version: v3.0.0** | **Flutter: 3.32.6**
 
 Flowrite is a modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. With seamless cloud sync, a clean interface, and robust offline support, your creative process has never been more fluid.
 
@@ -145,25 +142,6 @@ Want to contribute, learn from the code, or build your own version? Here's how t
    ```bash
    flutter run
    ```
-
-#### Installation & Development
-
-1.  Clone the repository
-    ```sh
-    git clone https://github.com/pi22by7/flowrite.git
-    ```
-2.  Navigate to the project directory
-    ```sh
-    cd flowrite
-    ```
-3.  Install dependencies
-    ```sh
-    flutter pub get
-    ```
-4.  Run the app
-    ```sh
-    flutter run
-    ```
 
 ## 🛠️ Development
 
@@ -332,6 +310,7 @@ _Want to work on any of these? Check out our [Contributing section](#-contributi
 - [Supabase](https://supabase.com/) - Backend, Authentication & Database
 - [Provider](https://pub.dev/packages/provider) - State Management
 - [Google Sign In](https://pub.dev/packages/google_sign_in) - Authentication
+- [flutter_dotenv](https://pub.dev/packages/flutter_dotenv) - Environment variable management
 - [dynamic_color](https://pub.dev/packages/dynamic_color) - Material 3 dynamic theming
 - [shared_preferences](https://pub.dev/packages/shared_preferences) - Local storage
 - [path_provider](https://pub.dev/packages/path_provider) - For finding commonly used locations on the filesystem.
