@@ -27,6 +27,8 @@ jobs:
       run: |
         echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
         echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+        echo "PRODUCTION_URL=https://flowrite.pi22by7.me" >> .env
+        echo "VERCEL_URL=https://flowrite-zeta.vercel.app" >> .env
         # Add other environment variables as needed
         
     - name: Get dependencies

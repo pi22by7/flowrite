@@ -45,7 +45,7 @@ class SupabaseAuthService {
   Future<AuthResponse> _webBasedGoogleSignIn() async {
     final response = await _supabase.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: kIsWeb ? null : SupabaseConfig.deepLinkScheme,
+      redirectTo: kIsWeb ? SupabaseConfig.redirectUrl : SupabaseConfig.deepLinkScheme,
       authScreenLaunchMode:
           kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
     );

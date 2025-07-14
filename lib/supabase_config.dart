@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 
 class SupabaseConfig {
   // Load configuration from environment variables
@@ -7,6 +8,25 @@ class SupabaseConfig {
 
   static String get supabaseAnonKey =>
       dotenv.env['SUPABASE_ANON_KEY'] ?? 'YOUR_SUPABASE_ANON_KEY_HERE';
+
+  // Dynamic redirect URL based on environment
+  static String get redirectUrl {
+    if (kIsWeb) {
+      // For web builds, use the production URL or fallback to Vercel URL
+      final productionUrl = dotenv.env['PRODUCTION_URL'];
+      if (productionUrl != null && productionUrl.isNotEmpty) {
+        return '$productionUrl/';
+      }
+      
+      final vercelUrl = dotenv.env['VERCEL_URL'];
+      if (vercelUrl != null && vercelUrl.isNotEmpty) {
+        return '$vercelUrl/';
+      }
+      
+      return 'http://localhost:3000/'; // Fallback for local development
+    }
+    return 'me.pi22by7.flowrite://login-callback'; // For mobile apps
+  }
 
   // Google OAuth Client IDs for different platforms
   static String get webClientId =>
