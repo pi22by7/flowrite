@@ -1,4 +1,4 @@
-name: Build and Release
+name: Multi-Platform Build and Release
 
 on:
   push:
@@ -38,6 +38,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "build-number=$GITHUB_RUN_NUMBER" >> $GITHUB_OUTPUT
 
+  # Android Build (Primary Platform)
   build-android:
     needs: prepare
     runs-on: ubuntu-latest
@@ -83,27 +84,425 @@ jobs:
             build/app/outputs/flutter-apk/
             build/app/outputs/bundle/release/
 
-  create-release:
-    needs: [prepare, build-android]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+  # iOS Build (Apple platforms - graceful handling)
+  build-ios:
+    needs: prepare
+    runs-on: macos-latest
+    continue-on-error: true  # Graceful handling if Apple build fails
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+          EOF
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build iOS (unsigned)
+        run: |
+          flutter build ios --release --no-codesign \
+            --build-name=${{ needs.prepare.outputs.version }} \
+            --build-number=${{ needs.prepare.outputs.build-number }} || {
+              echo "::warning::iOS build failed - continuing without iOS artifacts"
+              exit 0
+            }
+      - name: Create iOS IPA archive
+        run: |
+          if [ -d "build/ios/iphoneos/Runner.app" ]; then
+            mkdir -p build/ios/ipa
+            cd build/ios/iphoneos
+            mkdir -p Payload
+            cp -r Runner.app Payload/
+            zip -r ../ipa/flowrite-ios-${{ needs.prepare.outputs.version }}.ipa Payload/
+            echo "iOS IPA created successfully"
+          else
+            echo "::warning::iOS app not found - skipping IPA creation"
+          fi
+      - name: Upload iOS artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release
+          path: build/ios/ipa/
+          if-no-files-found: ignore
+
+  # Linux Desktop Build
+  build-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Graceful handling if Linux build fails
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - name: Enable Linux desktop
+        run: flutter config --enable-linux-desktop
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+          EOF
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Linux
+        run: |
+          flutter build linux --release \
+            --build-name=${{ needs.prepare.outputs.version }} \
+            --build-number=${{ needs.prepare.outputs.build-number }} || {
+              echo "::warning::Linux build failed - continuing without Linux artifacts"
+              exit 0
+            }
+      - name: Create Linux archive
+        run: |
+          if [ -d "build/linux/x64/release/bundle" ]; then
+            cd build/linux/x64/release
+            tar -czf flowrite-linux-${{ needs.prepare.outputs.version }}.tar.gz bundle/
+            echo "Linux archive created successfully"
+          else
+            echo "::warning::Linux bundle not found - skipping archive creation"
+          fi
+      - name: Upload Linux artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: build/linux/x64/release/*.tar.gz
+          if-no-files-found: ignore
+
+  # macOS Build (Apple platforms - graceful handling)
+  build-macos:
+    needs: prepare
+    runs-on: macos-latest
+    continue-on-error: true  # Graceful handling if macOS build fails
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+          EOF
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build macOS (unsigned)
+        run: |
+          flutter build macos --release \
+            --build-name=${{ needs.prepare.outputs.version }} \
+            --build-number=${{ needs.prepare.outputs.build-number }} || {
+              echo "::warning::macOS build failed - continuing without macOS artifacts"
+              exit 0
+            }
+      - name: Create macOS archive
+        run: |
+          if [ -d "build/macos/Build/Products/Release/flowrite.app" ]; then
+            cd build/macos/Build/Products/Release
+            zip -r flowrite-macos-${{ needs.prepare.outputs.version }}.zip flowrite.app
+            echo "macOS archive created successfully"
+          else
+            echo "::warning::macOS app not found - skipping archive creation"
+          fi
+      - name: Upload macOS artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: build/macos/Build/Products/Release/*.zip
+          if-no-files-found: ignore
+
+  # Windows Build (best effort on Linux runner)
+  build-windows:
+    needs: prepare
+    runs-on: windows-latest
+    continue-on-error: true  # Graceful handling if Windows build fails
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+      - name: Create .env file
+        run: |
+          echo SUPABASE_URL=${{ secrets.SUPABASE_URL }} > .env
+          echo SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} >> .env
+          echo GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }} >> .env
+          echo GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }} >> .env
+          echo GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }} >> .env
+          echo DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback >> .env
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Windows
+        run: |
+          flutter build windows --release `
+            --build-name=${{ needs.prepare.outputs.version }} `
+            --build-number=${{ needs.prepare.outputs.build-number }}
+        shell: powershell
+        continue-on-error: true
+      - name: Create Windows archive
+        run: |
+          if (Test-Path "build\windows\x64\runner\Release") {
+            Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "flowrite-windows-${{ needs.prepare.outputs.version }}.zip"
+            Write-Host "Windows archive created successfully"
+          } else {
+            Write-Host "::warning::Windows build not found - skipping archive creation"
+          }
+        shell: powershell
+      - name: Upload Windows artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: "*.zip"
+          if-no-files-found: ignore
+
+  # Web Build
+  build-web:
+    needs: prepare
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Graceful handling if Web build fails
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      - name: Enable web
+        run: flutter config --enable-web
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+          EOF
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Web
+        run: |
+          flutter build web --release \
+            --build-name=${{ needs.prepare.outputs.version }} \
+            --build-number=${{ needs.prepare.outputs.build-number }} || {
+              echo "::warning::Web build failed - continuing without Web artifacts"
+              exit 0
+            }
+      - name: Create Web archive
+        run: |
+          if [ -d "build/web" ]; then
+            cd build
+            tar -czf flowrite-web-${{ needs.prepare.outputs.version }}.tar.gz web/
+            echo "Web archive created successfully"
+          else
+            echo "::warning::Web build not found - skipping archive creation"
+          fi
+      - name: Upload Web artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: build/*.tar.gz
+          if-no-files-found: ignore
+
+  # Create Release with all available artifacts
+  create-release:
+    needs: [prepare, build-android, build-ios, build-linux, build-macos, build-windows, build-web]
+    runs-on: ubuntu-latest
+    if: always() && (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Download all available artifacts (gracefully handle missing ones)
       - name: Download Android artifacts
         uses: actions/download-artifact@v4
         with:
           name: android-release
           path: ./android-release
+        continue-on-error: true
+        
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-release
+          path: ./ios-release
+        continue-on-error: true
+        
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release
+          path: ./linux-release
+        continue-on-error: true
+        
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-release
+          path: ./macos-release
+        continue-on-error: true
+        
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: ./windows-release
+        continue-on-error: true
+        
+      - name: Download Web artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: web-release
+          path: ./web-release
+        continue-on-error: true
+
+      # Prepare release files list
+      - name: Prepare release files
+        id: files
+        run: |
+          echo "Checking for available artifacts..."
+          files=""
+          
+          # Android (primary platform)
+          if [ -f "android-release/flutter-apk/app-release.apk" ]; then
+            files="$files"$'\n'"android-release/flutter-apk/app-release.apk"
+            echo "✅ Android APK found"
+          fi
+          if [ -f "android-release/release/app-release.aab" ]; then
+            files="$files"$'\n'"android-release/release/app-release.aab"
+            echo "✅ Android App Bundle found"
+          fi
+          
+          # iOS
+          if [ -n "$(find ios-release -name "*.ipa" 2>/dev/null)" ]; then
+            files="$files"$'\n'"ios-release/*.ipa"
+            echo "✅ iOS IPA found"
+          else
+            echo "⚠️ No iOS artifacts available"
+          fi
+          
+          # Linux
+          if [ -n "$(find linux-release -name "*.tar.gz" 2>/dev/null)" ]; then
+            files="$files"$'\n'"linux-release/*.tar.gz"
+            echo "✅ Linux archive found"
+          else
+            echo "⚠️ No Linux artifacts available"
+          fi
+          
+          # macOS
+          if [ -n "$(find macos-release -name "*.zip" 2>/dev/null)" ]; then
+            files="$files"$'\n'"macos-release/*.zip"
+            echo "✅ macOS archive found"
+          else
+            echo "⚠️ No macOS artifacts available"
+          fi
+          
+          # Windows
+          if [ -n "$(find windows-release -name "*.zip" 2>/dev/null)" ]; then
+            files="$files"$'\n'"windows-release/*.zip"
+            echo "✅ Windows archive found"
+          else
+            echo "⚠️ No Windows artifacts available"
+          fi
+          
+          # Web
+          if [ -n "$(find web-release -name "*.tar.gz" 2>/dev/null)" ]; then
+            files="$files"$'\n'"web-release/*.tar.gz"
+            echo "✅ Web archive found"
+          else
+            echo "⚠️ No Web artifacts available"
+          fi
+          
+          # Remove leading newline and save
+          files=$(echo "$files" | sed '/^$/d')
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$files" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "Release will include the following files:"
+          echo "$files"
+
+      # Create the actual release
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
-          name: Flowrite ${{ needs.prepare.outputs.version }}
+          name: Flowrite ${{ needs.prepare.outputs.version }} (Multi-Platform)
           draft: false
           prerelease: false
           generate_release_notes: true
-          files: |
-            android-release/flutter-apk/app-release.apk
-            android-release/release/app-release.aab
+          body: |
+            # Flowrite ${{ needs.prepare.outputs.version }}
+            
+            ## Available Platforms
+            
+            This release includes builds for all available platforms. Some platforms may not be available due to build environment limitations.
+            
+            ### 📱 Mobile
+            - **Android**: APK and App Bundle (Play Store ready)
+            - **iOS**: Unsigned IPA (requires code signing)
+            
+            ### 🖥️ Desktop  
+            - **Linux**: Portable application bundle
+            - **macOS**: Unsigned app bundle (requires code signing)
+            - **Windows**: Portable executable
+            
+            ### 🌐 Web
+            - **Web**: Static files for web deployment
+            
+            ## Installation Notes
+            
+            - **Android**: Install the APK directly or submit the AAB to Play Store
+            - **iOS**: Requires Xcode and developer certificate for installation
+            - **Linux**: Extract and run the executable
+            - **macOS**: May require bypassing Gatekeeper for unsigned builds
+            - **Windows**: Extract and run the executable
+            - **Web**: Deploy the static files to any web server
+            
+            ## System Requirements
+            
+            - **Android**: Android 5.0+ (API level 21+)
+            - **iOS**: iOS 12.0+
+            - **Linux**: Ubuntu 18.04+ or equivalent
+            - **macOS**: macOS 10.14+
+            - **Windows**: Windows 10+
+            - **Web**: Modern web browser with JavaScript enabled
+          files: ${{ steps.files.outputs.files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
