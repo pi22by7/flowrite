@@ -226,9 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 8),
               _buildIconButton(
-                themeProvider.isDarkMode
-                    ? Icons.light_mode_rounded
-                    : Icons.dark_mode_rounded,
+                _getThemeIcon(themeProvider),
                 colorScheme,
                 () => themeProvider.toggleTheme(),
               ),
@@ -627,6 +625,17 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _files.remove(file);
       });
+    }
+  }
+
+  IconData _getThemeIcon(ThemeProvider themeProvider) {
+    switch (themeProvider.themeMode) {
+      case AppThemeMode.system:
+        return Icons.brightness_auto_rounded;
+      case AppThemeMode.light:
+        return Icons.light_mode_rounded;
+      case AppThemeMode.dark:
+        return Icons.dark_mode_rounded;
     }
   }
 }

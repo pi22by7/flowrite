@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 
+enum AppThemeMode { system, light, dark }
+
 class ThemeProvider extends ChangeNotifier {
-  bool _isDarkMode = false;
+  AppThemeMode _themeMode = AppThemeMode.system;
   bool _useDynamicColors = true;
   ThemeData? _dynamicLightTheme;
   ThemeData? _dynamicDarkTheme;
@@ -14,11 +16,29 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  bool get isDarkMode => _isDarkMode;
+  AppThemeMode get themeMode => _themeMode;
   bool get useDynamicColors => _useDynamicColors;
+  
+  // Legacy getter for compatibility
+  bool get isDarkMode => _themeMode == AppThemeMode.dark;
 
   void toggleTheme() {
-    _isDarkMode = !_isDarkMode;
+    switch (_themeMode) {
+      case AppThemeMode.system:
+        _themeMode = AppThemeMode.light;
+        break;
+      case AppThemeMode.light:
+        _themeMode = AppThemeMode.dark;
+        break;
+      case AppThemeMode.dark:
+        _themeMode = AppThemeMode.system;
+        break;
+    }
+    notifyListeners();
+  }
+
+  void setThemeMode(AppThemeMode mode) {
+    _themeMode = mode;
     notifyListeners();
   }
 
@@ -31,14 +51,49 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   ThemeData get currentTheme {
+    return getThemeForBrightness(_getEffectiveBrightness());
+  }
+  
+  ThemeData get lightTheme {
+    return getThemeForBrightness(Brightness.light);
+  }
+  
+  ThemeData get darkTheme {
+    return getThemeForBrightness(Brightness.dark);
+  }
+  
+  ThemeMode get materialThemeMode {
+    switch (_themeMode) {
+      case AppThemeMode.system:
+        return ThemeMode.system;
+      case AppThemeMode.light:
+        return ThemeMode.light;
+      case AppThemeMode.dark:
+        return ThemeMode.dark;
+    }
+  }
+  
+  ThemeData getThemeForBrightness(Brightness brightness) {
     if (_useDynamicColors) {
-      if (_isDarkMode && _dynamicDarkTheme != null) {
+      if (brightness == Brightness.dark && _dynamicDarkTheme != null) {
         return _dynamicDarkTheme!;
-      } else if (!_isDarkMode && _dynamicLightTheme != null) {
+      } else if (brightness == Brightness.light && _dynamicLightTheme != null) {
         return _dynamicLightTheme!;
       }
     }
-    return _isDarkMode ? _darkTheme : _lightTheme;
+    return brightness == Brightness.dark ? _darkTheme : _lightTheme;
+  }
+  
+  Brightness _getEffectiveBrightness() {
+    switch (_themeMode) {
+      case AppThemeMode.system:
+        // This will be overridden by system theme in MaterialApp
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      case AppThemeMode.light:
+        return Brightness.light;
+      case AppThemeMode.dark:
+        return Brightness.dark;
+    }
   }
 
   Future<void> _loadDynamicThemes() async {

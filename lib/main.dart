@@ -40,7 +40,9 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, child) {
         return MaterialApp(
           title: 'Flowrite',
-          theme: themeProvider.currentTheme,
+          themeMode: themeProvider.materialThemeMode,
+          theme: themeProvider.lightTheme,
+          darkTheme: themeProvider.darkTheme,
           home: const HomeScreen(),
         );
       },
