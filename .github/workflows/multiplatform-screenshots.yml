@@ -1,0 +1,241 @@
+name: Multi-Platform Screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to generate screenshots for'
+        required: true
+        default: 'android,linux'
+        type: choice
+        options:
+          - 'android'
+          - 'android,ios'
+          - 'android,linux'
+          - 'android,ios,linux'
+          - 'all'
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  FLUTTER_VERSION: '3.32.6'
+
+jobs:
+  # Job 1: Android Screenshots
+  android-screenshots:
+    if: contains(github.event.inputs.platforms, 'android') || github.event.inputs.platforms == 'all'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: 'stable'
+    
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Create Android emulator
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 34
+        target: google_apis
+        arch: x86_64
+        profile: pixel_6
+        script: echo "Emulator started"
+    
+    - name: Create .env file
+      run: |
+        cat > .env << EOF
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+        GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+        DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+        EOF
+    
+    - name: Generate Android screenshots
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 34
+        target: google_apis
+        arch: x86_64
+        profile: pixel_6
+        script: |
+          flutter pub get
+          ./scripts/generate_screenshots_multiplatform.sh --platforms android --output organized
+    
+    - name: Upload Android screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-screenshots
+        path: assets/screenshots/android/
+        retention-days: 30
+
+  # Job 2: iOS Screenshots
+  ios-screenshots:
+    if: contains(github.event.inputs.platforms, 'ios') || github.event.inputs.platforms == 'all'
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: 'stable'
+    
+    - name: Setup iOS simulator
+      run: |
+        xcrun simctl create "iPhone-15-Pro" "iPhone 15 Pro" iOS17.5
+        xcrun simctl boot "iPhone-15-Pro"
+    
+    - name: Create .env file
+      run: |
+        cat > .env << EOF
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+        GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+        DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+        EOF
+    
+    - name: Generate iOS screenshots
+      run: |
+        flutter pub get
+        ./scripts/generate_screenshots_multiplatform.sh --platforms ios --output organized
+    
+    - name: Upload iOS screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-screenshots
+        path: assets/screenshots/ios/
+        retention-days: 30
+
+  # Job 3: Linux Desktop Screenshots
+  linux-screenshots:
+    if: contains(github.event.inputs.platforms, 'linux') || github.event.inputs.platforms == 'all'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: 'stable'
+    
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb
+    
+    - name: Enable Linux desktop
+      run: flutter config --enable-linux-desktop
+    
+    - name: Create .env file
+      run: |
+        cat > .env << EOF
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+        GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+        DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+        EOF
+    
+    - name: Generate Linux screenshots
+      run: |
+        export DISPLAY=:99
+        sudo Xvfb -ac :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        sleep 3
+        flutter pub get
+        flutter test integration_test/app_test.dart -d linux --verbose
+        mkdir -p assets/screenshots/desktop/linux
+        # Copy screenshots from test output to organized structure
+        find . -name "*.png" -path "*/screenshots/*" -exec cp {} assets/screenshots/desktop/linux/ \;
+    
+    - name: Upload Linux screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-screenshots
+        path: assets/screenshots/desktop/linux/
+        retention-days: 30
+
+  # Job 4: Consolidate and Commit
+  consolidate-screenshots:
+    needs: [android-screenshots, linux-screenshots]
+    if: always() && (needs.android-screenshots.result == 'success' || needs.linux-screenshots.result == 'success')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all screenshots
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+    
+    - name: Organize screenshots
+      run: |
+        mkdir -p assets/screenshots
+        
+        # Copy all platform screenshots to organized structure
+        if [ -d "artifacts/android-screenshots" ]; then
+          mkdir -p assets/screenshots/android
+          cp -r artifacts/android-screenshots/* assets/screenshots/android/
+        fi
+        
+        if [ -d "artifacts/ios-screenshots" ]; then
+          mkdir -p assets/screenshots/ios
+          cp -r artifacts/ios-screenshots/* assets/screenshots/ios/
+        fi
+        
+        if [ -d "artifacts/linux-screenshots" ]; then
+          mkdir -p assets/screenshots/desktop/linux
+          cp -r artifacts/linux-screenshots/* assets/screenshots/desktop/linux/
+        fi
+        
+        # Create docs folder with best representative screenshots (Android preferred)
+        mkdir -p assets/screenshots/docs
+        if [ -d "assets/screenshots/android/phone" ]; then
+          cp assets/screenshots/android/phone/*.png assets/screenshots/docs/ 2>/dev/null || true
+        elif [ -d "assets/screenshots/ios/iphone" ]; then
+          cp assets/screenshots/ios/iphone/*.png assets/screenshots/docs/ 2>/dev/null || true
+        fi
+    
+    - name: Commit screenshots
+      if: false  # Manual workflow only - no auto-commits
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add assets/screenshots/
+        if ! git diff --staged --quiet; then
+          echo "Screenshots updated, committing changes..."
+          git commit -m "update: auto-generated screenshots [skip ci]"
+          git push
+        else
+          echo "No screenshot changes to commit"
+        fi
+    
+    - name: Upload consolidated screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-platform-screenshots
+        path: assets/screenshots/
+        retention-days: 90
