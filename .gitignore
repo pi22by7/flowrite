@@ -34,6 +34,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/deploy/
 
 # Symbolication related
 app.*.symbols

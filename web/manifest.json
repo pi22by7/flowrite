@@ -1,11 +1,11 @@
 {
-    "name": "flowrite",
-    "short_name": "flowrite",
-    "start_url": ".",
+    "name": "Flowrite - Songwriting App",
+    "short_name": "Flowrite",
+    "start_url": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#6246EA",
+    "theme_color": "#6246EA",
+    "description": "Modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. Open source, ad-free, and built for creative minds.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
