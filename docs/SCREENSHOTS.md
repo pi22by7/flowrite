@@ -17,7 +17,7 @@ The Flowrite project includes automated screenshot generation using Flutter inte
 
 ```bash
 # Run the automated screenshot script
-./scripts/generate_screenshots.sh
+./scripts/complete_screenshots.sh
 ```
 
 This script will:
@@ -192,7 +192,7 @@ flutter test integration_test/app_test.dart --driver-log-level=trace
 
 ## Script Reference
 
-### `scripts/generate_screenshots.sh`
+### `scripts/complete_screenshots.sh`
 
 Main screenshot generation script with error handling and platform detection.
 

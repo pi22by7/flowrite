@@ -155,7 +155,7 @@ This project includes automated screenshot generation for documentation and app 
 
 ```sh
 # Generate screenshots automatically
-./scripts/generate_screenshots.sh
+./scripts/complete_screenshots.sh
 ```
 
 #### Manual Process
