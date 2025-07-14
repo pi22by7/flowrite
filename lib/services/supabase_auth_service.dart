@@ -14,16 +14,24 @@ class SupabaseAuthService {
 
   Future<AuthResponse?> signInWithGoogle() async {
     try {
+      debugPrint('Starting Google Sign-In process...');
+
       if (_isDesktopOrWeb()) {
+        debugPrint('Using web-based Google Sign-In');
         // Use web-based OAuth for desktop platforms and web
         return await _webBasedGoogleSignIn();
       } else {
+        debugPrint('Using native Google Sign-In');
         // Use native Google Sign-In for mobile platforms
         return await _nativeGoogleSignIn();
       }
     } catch (e) {
       debugPrint('Error signing in with Google: $e');
-      return null;
+      debugPrint('Error type: ${e.runtimeType}');
+
+      // Re-throw the exception so the UI can handle it properly
+      // instead of just returning null
+      rethrow;
     }
   }
 
@@ -58,47 +66,75 @@ class SupabaseAuthService {
   }
 
   Future<AuthResponse> _nativeGoogleSignIn() async {
-    final GoogleSignIn googleSignIn = GoogleSignIn(
+    debugPrint('Starting native Google Sign-In...');
+    debugPrint('Platform: $defaultTargetPlatform');
+    debugPrint('Web Client ID: ${SupabaseConfig.webClientId}');
+    debugPrint('iOS Client ID: ${SupabaseConfig.iosClientId}');
+
+    final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+
+    // Initialize with proper client IDs (required in 7.x)
+    await googleSignIn.initialize(
       clientId: defaultTargetPlatform == TargetPlatform.iOS
           ? SupabaseConfig.iosClientId
           : null,
       serverClientId: SupabaseConfig.webClientId,
     );
 
-    final googleUser = await googleSignIn.signIn();
-    if (googleUser == null) {
-      throw Exception('Google sign-in was cancelled by user');
+    // Check if authenticate is supported on this platform
+    if (!googleSignIn.supportsAuthenticate()) {
+      throw Exception('This platform does not support authenticate method');
     }
 
-    final googleAuth = await googleUser.authentication;
-    final accessToken = googleAuth.accessToken;
+    debugPrint('Calling googleSignIn.authenticate()...');
+    GoogleSignInAccount googleUser;
+    try {
+      googleUser = await googleSignIn.authenticate();
+    } catch (e) {
+      debugPrint('Google authenticate failed: $e');
+      throw Exception('Google sign-in was cancelled by user or failed: $e');
+    }
+
+    debugPrint('Google user authenticated: ${googleUser.email}');
+
+    // Get the authentication details from the signed-in user
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    debugPrint('Google auth tokens retrieved');
+    debugPrint('ID Token length: ${googleAuth.idToken?.length ?? 0}');
+
     final idToken = googleAuth.idToken;
-
-    if (accessToken == null) {
-      throw Exception('No Access Token found from Google');
-    }
     if (idToken == null) {
-      throw Exception('No ID Token found from Google');
+      throw Exception('Failed to get Google ID token');
     }
 
-    return await _supabase.auth.signInWithIdToken(
-      provider: OAuthProvider.google,
-      idToken: idToken,
-      accessToken: accessToken,
-    );
+    debugPrint('Attempting Supabase sign-in with ID token...');
+
+    // Use the ID token with Supabase - for Google OAuth, we typically only need the ID token
+    try {
+      final response = await _supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+      );
+
+      debugPrint('Supabase sign-in successful');
+      debugPrint('User ID: ${response.user?.id}');
+      debugPrint('User email: ${response.user?.email}');
+
+      return response;
+    } catch (e) {
+      debugPrint('Supabase sign-in failed: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      rethrow;
+    }
   }
 
   Future<void> signOut() async {
     try {
       // Sign out from Google on mobile platforms
       if (!_isDesktopOrWeb()) {
-        final GoogleSignIn googleSignIn = GoogleSignIn(
-          clientId: defaultTargetPlatform == TargetPlatform.iOS
-              ? SupabaseConfig.iosClientId
-              : null,
-          serverClientId: SupabaseConfig.webClientId,
-        );
-        await googleSignIn.signOut();
+        await GoogleSignIn.instance.disconnect();
       }
 
       // Sign out from Supabase
