@@ -525,7 +525,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
-          name: "🎨 Flowrite v${{ needs.prepare.outputs.version }}"
+          name: "Flowrite v${{ needs.prepare.outputs.version }}"
           draft: false
           prerelease: false
           generate_release_notes: false
@@ -537,17 +537,17 @@ jobs:
             This release includes builds for multiple platforms. Choose the right download for your system:
             
             ### 📱 Mobile
-            - **🤖 Android APK**: Direct install on Android devices (v5.0+)
-            - **📦 Android App Bundle**: For Google Play Store submission
-            - **🍎 iOS IPA**: Requires Xcode and developer certificate (v12.0+)
+            - **Android APK**: Direct install on Android devices (v5.0+)
+            - **Android App Bundle**: For Google Play Store submission
+            - **iOS IPA**: Requires Xcode and developer certificate (v12.0+)
             
             ### 🖥️ Desktop
-            - **🐧 Linux**: Portable application bundle (Ubuntu 18.04+)
-            - **🍎 macOS**: App bundle - may require Gatekeeper bypass (v10.14+)
-            - **🪟 Windows**: Portable executable (Windows 10+)
+            - **Linux**: Portable application bundle (Ubuntu 18.04+)
+            - **macOS**: App bundle - may require Gatekeeper bypass (v10.14+)
+            - **Windows**: Portable executable (Windows 10+)
             
             ### 🌐 Web
-            - **🌍 Web App**: Static files for web server deployment
+            - **Web App**: Static files for web server deployment
             
             ## 🚀 Quick Install
             
@@ -559,9 +559,9 @@ jobs:
             
             ## 🆘 Need Help?
             
-            - 📖 [Documentation](https://github.com/pi22by7/flowrite/blob/main/README.md)
-            - 🐛 [Report Issues](https://github.com/pi22by7/flowrite/issues)
-            - 💬 [Discussions](https://github.com/pi22by7/flowrite/discussions)
+            - [Documentation](https://github.com/pi22by7/flowrite/blob/main/README.md)
+            - [Report Issues](https://github.com/pi22by7/flowrite/issues)
+            - [Discussions](https://github.com/pi22by7/flowrite/discussions)
             
             ---
             
