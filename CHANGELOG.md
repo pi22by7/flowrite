@@ -10,11 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.2.0] - 2025-07-14
 
 ### ✨ Added
+
 - **Production Deployment**: Complete Vercel integration with custom domain support
 - **Enhanced Web Experience**: Improved SEO metadata and web build optimization
 - **GitHub Actions Workflow**: Automated Vercel deployment with proper Flutter build environment
 
 ### 🔧 Fixed
+
 - **OAuth Authentication**: Fixed OAuth redirect URLs for production deployment with custom domain support
 - **Multi-Platform Builds**: Improved macOS 10.15+ compatibility and Windows PowerShell syntax
 - **Build Pipeline**: Enhanced Android artifact naming and deployment workflow authentication
@@ -22,11 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Windows Build**: Fixed PowerShell syntax for environment file creation in CI/CD
 
 ### 🚀 Improved
+
 - **Web Deployment**: Optimized Vercel routing patterns and build verification
 - **Development Workflow**: Better error handling and build verification in CI/CD pipeline
 - **Cross-Platform Support**: Standardized build processes across all platforms
 
 ### 🔧 Technical
+
 - **Vercel Configuration**: Enhanced web metadata, SEO optimization, and routing
 - **Flutter Version**: Updated to 3.32.6 in deployment workflow
 - **Build Artifacts**: Improved naming conventions and multi-platform compatibility
