@@ -53,23 +53,39 @@ jobs:
         
     - name: Verify Vercel configuration
       run: |
-        echo "Vercel project setup:"
+        echo "Vercel deployment setup:"
+        echo "Using latest Vercel CLI"
         echo "Working directory: ./build/web"
-        echo "Vercel args: --prod"
-        echo "GitHub comment: enabled"
-        echo "GitHub deployment: disabled"
+        echo "Deployment: Production"
+        echo "Authentication: Token-based"
+        echo "Project linking: Automatic via .vercel/project.json"
       
     - name: Deploy to Vercel
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: amondnet/vercel-action@v25
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: ./build/web
-        vercel-args: '--prod'
-        github-comment: true
-        github-deployment: false
+      run: |
+        npm install -g vercel@latest
+        cd build/web
+        
+        # Create .vercelrc file for authentication
+        echo '{"token":"${{ secrets.VERCEL_TOKEN }}"}' > ~/.vercelrc
+        
+        # Set up project linking
+        echo "${{ secrets.VERCEL_ORG_ID }}" > .vercel/project.json
+        echo "${{ secrets.VERCEL_PROJECT_ID }}" >> .vercel/project.json
+        
+        # Create proper .vercel directory and project.json
+        mkdir -p .vercel
+        cat > .vercel/project.json << EOF
+        {
+          "orgId": "${{ secrets.VERCEL_ORG_ID }}",
+          "projectId": "${{ secrets.VERCEL_PROJECT_ID }}"
+        }
+        EOF
+        
+        echo "Vercel CLI version:"
+        vercel --version
+        echo "Deploying to Vercel..."
+        vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
       env:
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
