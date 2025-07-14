@@ -7,6 +7,13 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData? _dynamicLightTheme;
   ThemeData? _dynamicDarkTheme;
 
+  ThemeProvider() {
+    // Load dynamic themes on initialization if dynamic colors are enabled
+    if (_useDynamicColors) {
+      _loadDynamicThemes();
+    }
+  }
+
   bool get isDarkMode => _isDarkMode;
   bool get useDynamicColors => _useDynamicColors;
 
