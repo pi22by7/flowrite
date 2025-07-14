@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 Fixed
+- **🍎 macOS Build**: Updated deployment target to 10.15+ for Google Sign-In compatibility
+- **🪟 Windows Build**: Fixed PowerShell syntax for environment file creation in CI/CD
+- **🏗️ Multi-Platform Builds**: Improved platform-specific build configurations
+
+### 🔧 Technical
+- **Xcode Project**: Updated macOS deployment target in all build configurations
+- **GitHub Actions**: Fixed Windows PowerShell script syntax for environment variables
+- **Build Pipeline**: Enhanced error handling for platform-specific dependencies
+
 ## [3.1.0] - 2025-07-14
 
 ### ✨ Added
