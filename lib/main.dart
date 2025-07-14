@@ -38,6 +38,19 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
+        // Show loading screen until theme preferences are loaded
+        if (!themeProvider.isInitialized) {
+          return MaterialApp(
+            title: 'Flowrite',
+            theme: ThemeData.light(),
+            home: const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          );
+        }
+        
         return MaterialApp(
           title: 'Flowrite',
           themeMode: themeProvider.materialThemeMode,

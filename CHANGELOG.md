@@ -14,6 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2025-07-14
+
+### ✨ Added
+- **💾 Settings Persistence**: Theme preferences now persist across app restarts
+- **🔄 Automatic Theme Restoration**: App remembers your last theme choice (System/Light/Dark)
+- **📱 Cross-Platform Storage**: Settings sync works on all platforms (mobile, desktop, web)
+
+### 🚀 Improved
+- **🎨 Better Theme Experience**: Seamless theme switching with persistent preferences
+- **⚡ Faster App Startup**: Theme applied immediately on launch without flickering
+- **🛡️ Reliable Storage**: Robust error handling for settings persistence
+
+### 🔧 Technical
+- **SharedPreferences Integration**: Platform-appropriate storage mechanisms
+- **State Management**: Enhanced ThemeProvider with persistent state
+- **Error Handling**: Graceful fallbacks if storage is unavailable
+
 ## [3.0.0] - 2025-07-14
 
 ### ✨ What's New

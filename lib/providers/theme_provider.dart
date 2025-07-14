@@ -1,26 +1,83 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppThemeMode { system, light, dark }
 
 class ThemeProvider extends ChangeNotifier {
+  static const String _themeModeKey = 'theme_mode';
+  static const String _useDynamicColorsKey = 'use_dynamic_colors';
+  
   AppThemeMode _themeMode = AppThemeMode.system;
   bool _useDynamicColors = true;
   ThemeData? _dynamicLightTheme;
   ThemeData? _dynamicDarkTheme;
+  bool _isInitialized = false;
 
   ThemeProvider() {
-    // Load dynamic themes on initialization if dynamic colors are enabled
-    if (_useDynamicColors) {
-      _loadDynamicThemes();
-    }
+    _initializeFromStorage();
   }
 
   AppThemeMode get themeMode => _themeMode;
   bool get useDynamicColors => _useDynamicColors;
+  bool get isInitialized => _isInitialized;
   
   // Legacy getter for compatibility
   bool get isDarkMode => _themeMode == AppThemeMode.dark;
+
+  /// Initialize theme settings from persistent storage
+  Future<void> _initializeFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Load theme mode preference
+      final savedThemeModeIndex = prefs.getInt(_themeModeKey);
+      if (savedThemeModeIndex != null && 
+          savedThemeModeIndex >= 0 && 
+          savedThemeModeIndex < AppThemeMode.values.length) {
+        _themeMode = AppThemeMode.values[savedThemeModeIndex];
+      }
+      
+      // Load dynamic colors preference
+      _useDynamicColors = prefs.getBool(_useDynamicColorsKey) ?? true;
+      
+      // Load dynamic themes if enabled
+      if (_useDynamicColors) {
+        await _loadDynamicThemes();
+      }
+      
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      // Graceful fallback - use defaults if storage fails
+      debugPrint('Failed to load theme preferences: $e');
+      _isInitialized = true;
+      if (_useDynamicColors) {
+        await _loadDynamicThemes();
+      }
+      notifyListeners();
+    }
+  }
+
+  /// Save theme mode preference to persistent storage
+  Future<void> _saveThemeMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_themeModeKey, _themeMode.index);
+    } catch (e) {
+      debugPrint('Failed to save theme mode preference: $e');
+    }
+  }
+
+  /// Save dynamic colors preference to persistent storage
+  Future<void> _saveDynamicColorsPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_useDynamicColorsKey, _useDynamicColors);
+    } catch (e) {
+      debugPrint('Failed to save dynamic colors preference: $e');
+    }
+  }
 
   void toggleTheme() {
     switch (_themeMode) {
@@ -34,16 +91,19 @@ class ThemeProvider extends ChangeNotifier {
         _themeMode = AppThemeMode.system;
         break;
     }
+    _saveThemeMode(); // Persist the change
     notifyListeners();
   }
 
   void setThemeMode(AppThemeMode mode) {
     _themeMode = mode;
+    _saveThemeMode(); // Persist the change
     notifyListeners();
   }
 
   void toggleDynamicColors() {
     _useDynamicColors = !_useDynamicColors;
+    _saveDynamicColorsPreference(); // Persist the change
     if (_useDynamicColors) {
       _loadDynamicThemes();
     }
