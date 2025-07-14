@@ -14,12 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 🐛 Fixed
-- **🍎 macOS Build**: Updated deployment target to 10.15+ for Google Sign-In compatibility
-- **🪟 Windows Build**: Fixed PowerShell syntax for environment file creation in CI/CD
-- **🏗️ Multi-Platform Builds**: Improved platform-specific build configurations
+### Fixed
+- **macOS Build**: Updated deployment target to 10.15+ for Google Sign-In compatibility
+- **Windows Build**: Fixed PowerShell syntax for environment file creation in CI/CD
+- **Multi-Platform Builds**: Improved platform-specific build configurations
 
-### 🔧 Technical
+### Technical
 - **Xcode Project**: Updated macOS deployment target in all build configurations
 - **GitHub Actions**: Fixed Windows PowerShell script syntax for environment variables
 - **Build Pipeline**: Enhanced error handling for platform-specific dependencies
@@ -27,14 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.1.0] - 2025-07-14
 
 ### ✨ Added
-- **💾 Settings Persistence**: Theme preferences now persist across app restarts
-- **🔄 Automatic Theme Restoration**: App remembers your last theme choice (System/Light/Dark)
-- **📱 Cross-Platform Storage**: Settings sync works on all platforms (mobile, desktop, web)
+- **Settings Persistence**: Theme preferences now persist across app restarts
+- **Automatic Theme Restoration**: App remembers your last theme choice (System/Light/Dark)
+- **Cross-Platform Storage**: Settings sync works on all platforms (mobile, desktop, web)
 
 ### 🚀 Improved
-- **🎨 Better Theme Experience**: Seamless theme switching with persistent preferences
-- **⚡ Faster App Startup**: Theme applied immediately on launch without flickering
-- **🛡️ Reliable Storage**: Robust error handling for settings persistence
+- **Better Theme Experience**: Seamless theme switching with persistent preferences
+- **Faster App Startup**: Theme applied immediately on launch without flickering
+- **Reliable Storage**: Robust error handling for settings persistence
 
 ### 🔧 Technical
 - **SharedPreferences Integration**: Platform-appropriate storage mechanisms
@@ -46,19 +46,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ What's New
 
-- **🎨 System Theme Default**: Flowrite now automatically follows your device's system theme (light/dark mode)
-- **🔄 Smart Theme Cycling**: Enhanced theme toggle with System → Light → Dark sequence
-- **🌍 Universal Platform Support**: Now available for Android, iOS, Linux, macOS, Windows, and Web
-- **🔐 Cross-Platform Authentication**: Seamless Google login across all platforms with automatic platform detection
-- **📦 Multi-Platform Releases**: Automated builds for all supported platforms with graceful error handling
+- **System Theme Default**: Flowrite now automatically follows your device's system theme (light/dark mode)
+- **Smart Theme Cycling**: Enhanced theme toggle with System → Light → Dark sequence
+- **Universal Platform Support**: Now available for Android, iOS, Linux, macOS, Windows, and Web
+- **Cross-Platform Authentication**: Seamless Google login across all platforms with automatic platform detection
+- **Multi-Platform Releases**: Automated builds for all supported platforms with graceful error handling
 
 ### 🚀 Major Improvements
 
-- **🏗️ Backend Migration**: Complete migration from Firebase to Supabase for better cross-platform support
-- **⚙️ Environment Configuration**: Secure .env file system for managing secrets and configuration
-- **🖥️ Desktop Experience**: Full desktop support with web-based OAuth for Linux, macOS, and Windows
-- **📱 Mobile Enhancement**: Improved mobile experience with native authentication flows
-- **🌐 Web Deployment**: Static web app deployment capability for any hosting service
+- **Backend Migration**: Complete migration from Firebase to Supabase for better cross-platform support
+- **Environment Configuration**: Secure .env file system for managing secrets and configuration
+- **Desktop Experience**: Full desktop support with web-based OAuth for Linux, macOS, and Windows
+- **Mobile Enhancement**: Improved mobile experience with native authentication flows
+- **Web Deployment**: Static web app deployment capability for any hosting service
 
 ### 🔧 Technical Overhaul
 

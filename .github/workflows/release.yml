@@ -76,13 +76,24 @@ jobs:
           flutter build appbundle --release \
             --build-name=${{ needs.prepare.outputs.version }} \
             --build-number=${{ needs.prepare.outputs.build-number }}
+      - name: Rename Android artifacts
+        run: |
+          mkdir -p build/android/renamed
+          # Copy and rename APK
+          if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            cp "build/app/outputs/flutter-apk/app-release.apk" "build/android/renamed/flowrite-android-${{ needs.prepare.outputs.version }}.apk"
+            echo "✅ Android APK renamed to flowrite-android-${{ needs.prepare.outputs.version }}.apk"
+          fi
+          # Copy and rename App Bundle
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            cp "build/app/outputs/bundle/release/app-release.aab" "build/android/renamed/flowrite-android-${{ needs.prepare.outputs.version }}.aab"
+            echo "✅ Android App Bundle renamed to flowrite-android-${{ needs.prepare.outputs.version }}.aab"
+          fi
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-release
-          path: |
-            build/app/outputs/flutter-apk/
-            build/app/outputs/bundle/release/
+          path: build/android/renamed/
 
   # iOS Build (Apple platforms - graceful handling)
   build-ios:
@@ -401,12 +412,12 @@ jobs:
           files=""
           
           # Android (primary platform)
-          if [ -f "android-release/flutter-apk/app-release.apk" ]; then
-            files="$files"$'\n'"android-release/flutter-apk/app-release.apk"
+          if [ -f "android-release/flowrite-android-${{ needs.prepare.outputs.version }}.apk" ]; then
+            files="$files"$'\n'"android-release/flowrite-android-${{ needs.prepare.outputs.version }}.apk"
             echo "✅ Android APK found"
           fi
-          if [ -f "android-release/release/app-release.aab" ]; then
-            files="$files"$'\n'"android-release/release/app-release.aab"
+          if [ -f "android-release/flowrite-android-${{ needs.prepare.outputs.version }}.aab" ]; then
+            files="$files"$'\n'"android-release/flowrite-android-${{ needs.prepare.outputs.version }}.aab"
             echo "✅ Android App Bundle found"
           fi
           
