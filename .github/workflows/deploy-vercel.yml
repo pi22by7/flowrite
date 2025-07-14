@@ -66,15 +66,10 @@ jobs:
         npm install -g vercel@latest
         cd build/web
         
-        # Create .vercelrc file for authentication
-        echo '{"token":"${{ secrets.VERCEL_TOKEN }}"}' > ~/.vercelrc
-        
-        # Set up project linking
-        echo "${{ secrets.VERCEL_ORG_ID }}" > .vercel/project.json
-        echo "${{ secrets.VERCEL_PROJECT_ID }}" >> .vercel/project.json
-        
-        # Create proper .vercel directory and project.json
+        # Create .vercel directory first
         mkdir -p .vercel
+        
+        # Create proper .vercel/project.json with correct format
         cat > .vercel/project.json << EOF
         {
           "orgId": "${{ secrets.VERCEL_ORG_ID }}",
@@ -84,6 +79,8 @@ jobs:
         
         echo "Vercel CLI version:"
         vercel --version
+        echo "Project configuration:"
+        cat .vercel/project.json
         echo "Deploying to Vercel..."
         vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
       env:
