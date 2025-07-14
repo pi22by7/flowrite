@@ -226,6 +226,11 @@ jobs:
           GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
           DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
           EOF
+      - name: Clean CocoaPods cache and dependencies
+        run: |
+          flutter clean
+          flutter pub get
+          cd macos && rm -rf Pods Podfile.lock && pod cache clean --all || true
       - name: Install dependencies
         run: flutter pub get
       - name: Build macOS (unsigned)

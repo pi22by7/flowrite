@@ -2,29 +2,14 @@ name: Deploy to Vercel
 
 on:
   push:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'assets/screenshots/**'
-      - 'CHANGELOG.md'
-      - 'README.md'
-      - 'CONTRIBUTING.md'
-      - 'CODE_OF_CONDUCT.md'
-      - 'TODO.md'
-      - 'LICENSE'
-  pull_request:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'assets/screenshots/**'
-      - 'CHANGELOG.md'
-      - 'README.md'
-      - 'CONTRIBUTING.md'
-      - 'CODE_OF_CONDUCT.md'
-      - 'TODO.md'
-      - 'LICENSE'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Deploy specific tag (optional, defaults to latest)'
+        required: false
+        type: string
 
 env:
   FLUTTER_VERSION: '3.32.6'
