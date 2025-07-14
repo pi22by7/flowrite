@@ -1,4 +1,6 @@
-# Flowrite 📝
+# ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)write 📝
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
@@ -77,7 +79,7 @@ This project is my contribution to that ideal—a foundation that others can lea
 ## ✨ Features
 
 - 🎯 **Clean, Distraction-free Writing**: A minimalist interface that keeps you focused on your creativity, not the UI
-- ☁️ **Seamless Cloud Sync**: Access your work across all devices with Firebase Cloud Firestore—your lyrics follow you everywhere
+- ☁️ **Seamless Cloud Sync**: Access your work across all devices with Supabase—your lyrics follow you everywhere
 - 📱 **Reliable Offline Support**: Write anywhere, anytime. No internet? No problem. Your changes sync automatically when you're back online
 - 💾 **Auto-save**: Never lose a brilliant line again with automatic saving as you type
 - 🎨 **Material 3 Design**: Beautiful, modern UI with dynamic colors that adapt to your device's wallpaper (Android 12+)
@@ -111,10 +113,34 @@ Want to contribute, learn from the code, or build your own version? Here's how t
 #### Prerequisites
 
 - Flutter SDK (latest stable version)
-- A Firebase project set up (for cloud sync features):
-  - Android: `google-services.json`
-  - iOS: `GoogleService-Info.plist`
+- A Supabase project set up (for cloud sync features)
+- Google OAuth credentials configured in Supabase
+- Environment variables configured (see setup below)
 - An editor like Android Studio or VS Code
+
+#### Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/pi22by7/flowrite.git
+   cd flowrite
+   ```
+
+2. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Supabase credentials and Google OAuth client IDs
+   ```
+
+3. **Install dependencies**
+   ```bash
+   flutter pub get
+   ```
+
+4. **Run the app**
+   ```bash
+   flutter run
+   ```
 
 #### Installation & Development
 
@@ -269,7 +295,7 @@ Pre-built releases are available for multiple platforms:
 - [x] Dark/Light theme support
 - [x] Local file storage
 - [x] Google Sign-in integration
-- [x] Firebase Cloud Firestore integration
+- [x] Supabase integration
 - [x] Auto-save functionality
 - [x] File management (create, rename, delete)
 - [x] Cloud sync capabilities
@@ -299,7 +325,7 @@ _Want to work on any of these? Check out our [Contributing section](#-contributi
 ## 🏗️ Built With
 
 - [Flutter](https://flutter.dev/) - UI Framework
-- [Firebase](https://firebase.google.com/) - Backend, Authentication & Database (Cloud Firestore)
+- [Supabase](https://supabase.com/) - Backend, Authentication & Database
 - [Provider](https://pub.dev/packages/provider) - State Management
 - [Google Sign In](https://pub.dev/packages/google_sign_in) - Authentication
 - [dynamic_color](https://pub.dev/packages/dynamic_color) - Material 3 dynamic theming

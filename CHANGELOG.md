@@ -5,7 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [Unreleased]
+
+## [3.0.0] - 2025-07-14
+
+### BREAKING CHANGES
+
+- **Migration from Firebase to Supabase**: Complete backend replacement for universal platform support
+- **Environment variable configuration**: Secrets now managed via .env files instead of hardcoded values
+- **Platform support expansion**: Now supports Linux, macOS, Windows, Android, iOS, and Web platforms
+- **Authentication overhaul**: Cross-platform Google OAuth (web-based for desktop, native for mobile)
+
+### Added
+
+- Cross-platform authentication system with automatic platform detection
+- Environment variable configuration with .env file support
+- Supabase integration with PostgreSQL database and Row Level Security
+- Desktop platform support (Linux, macOS, Windows) with web-based OAuth
+- GitHub Secrets integration for CI/CD workflows
+- Database migration system with SQL schema files
+
+### Removed
+
+- Firebase integration (Cloud Firestore, Firebase Auth)
+- Firebase configuration files (google-services.json, GoogleService-Info.plist)
+- Platform-specific Firebase dependencies
+
+### Changed
+
+- Build scripts now check for .env file configuration
+- CI/CD workflows updated to use GitHub Secrets for environment variables
+- Documentation updated to reflect Supabase setup requirements
 
 ## [2.0.0] - 2025-07-11
 

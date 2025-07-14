@@ -58,6 +58,26 @@ extract_version() {
     log "Version: $VERSION, Build: $BUILD_NUMBER"
 }
 
+# Check for required configuration
+check_environment() {
+    if [ ! -f "$PROJECT_DIR/.env" ]; then
+        warning ".env file not found!"
+        warning "Copy .env.example to .env and configure your Supabase credentials:"
+        warning "  cp .env.example .env"
+        warning "  # Edit .env with your actual values"
+        warning ""
+        warning "Build will continue but app may not function properly without configuration."
+        read -p "Continue anyway? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            error "Build cancelled. Please configure .env file first."
+            exit 1
+        fi
+    else
+        log "Environment configuration found (.env)"
+    fi
+}
+
 # Setup Flutter
 setup_flutter() {
     log "Setting up Flutter..."
@@ -236,6 +256,9 @@ main() {
     
     # Extract version
     extract_version
+    
+    # Check environment configuration
+    check_environment
     
     # Setup Flutter
     setup_flutter

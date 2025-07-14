@@ -205,7 +205,7 @@ Example: `version: 1.2.3+45` → tag `v1.2.3`
 
 1. Check GitHub Actions logs for detailed error messages
 2. Ensure all dependencies are properly installed
-3. Verify Firebase configuration files are present
+3. Verify environment configuration (.env file) is present
 4. Test builds locally before creating releases
 
 ## 🔄 Workflow Efficiency
