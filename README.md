@@ -1,4 +1,5 @@
 # ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
+
 ![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)write 📝
 
@@ -121,18 +122,21 @@ Want to contribute, learn from the code, or build your own version? Here's how t
 #### Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/pi22by7/flowrite.git
    cd flowrite
    ```
 
 2. **Configure environment variables**
+
    ```bash
    cp .env.example .env
    # Edit .env with your Supabase credentials and Google OAuth client IDs
    ```
 
 3. **Install dependencies**
+
    ```bash
    flutter pub get
    ```
