@@ -89,7 +89,7 @@ This project is my contribution to that ideal—a foundation that others can lea
 
 ## 📥 Download Flowrite
 
-Ready to start writing? Pre-built releases are (or will be) available for multiple platforms:
+Ready to start writing? Pre-built releases are available for multiple platforms:
 
 - **Android**: APK and AAB files
 - **Linux**: Portable tar.gz packages
@@ -155,7 +155,7 @@ This project includes automated screenshot generation for documentation and app 
 
 ```sh
 # Generate screenshots automatically
-./scripts/complete_screenshots.sh
+./scripts/generate_screenshots.sh
 ```
 
 #### Manual Process

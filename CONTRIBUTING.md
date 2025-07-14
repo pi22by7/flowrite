@@ -8,7 +8,7 @@ First off, thank you for considering contributing to Flowrite! It's people like 
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
-  - [Firebase Setup](#firebase-setup)
+  - [Supabase Setup](#supabase-setup)
 - [How to Contribute](#how-to-contribute)
   - [Reporting Bugs](#reporting-bugs)
   - [Suggesting Enhancements](#suggesting-enhancements)
@@ -31,7 +31,7 @@ This project and everyone participating in it is governed by the [Flowrite Code 
 
 - [Flutter SDK](https://flutter.dev/docs/get-started/install) (latest stable version)
 - An editor like [Android Studio](https://developer.android.com/studio) or [VS Code](https://code.visualstudio.com/)
-- A [Firebase project](https://firebase.google.com/docs/flutter/setup)
+- A [Supabase project](https://supabase.com/docs/guides/getting-started)
 
 ### Installation
 
@@ -46,28 +46,30 @@ This project and everyone participating in it is governed by the [Flowrite Code 
     flutter pub get
     ```
 
-### Firebase Setup
+### Supabase Setup
 
-To run the app, you'll need to connect it to your own Firebase project.
+To run the app, you'll need to connect it to your own Supabase project.
 
-1.  Create a new Firebase project in the [Firebase console](https://console.firebase.google.com/).
-2.  Add an Android app and an iOS app to your project.
-3.  Follow the instructions to download the configuration files:
-    - For Android, download `google-services.json` and place it in the `android/app/` directory.
-    - For iOS, download `GoogleService-Info.plist` and place it in the `ios/Runner/` directory.
-4.  Enable the following Firebase services:
-    - **Authentication**: Enable the "Google" sign-in provider.
-    - **Firestore**: Create a Firestore database and set up security rules. For development, you can start with rules that allow reads and writes for authenticated users:
-      ```json
-      rules_version = '2';
-      service cloud.firestore {
-        match /databases/{database}/documents {
-          match /{document=**} {
-            allow read, write: if request.auth != null;
-          }
-        }
-      }
-      ```
+1.  Create a new Supabase project in the [Supabase console](https://supabase.com/dashboard).
+2.  Go to **Settings** → **API** and copy your project URL and anon key.
+3.  Configure Google OAuth in your Supabase project:
+    - Go to **Authentication** → **Settings** → **Auth Providers**
+    - Enable **Google** provider
+    - Add your Google OAuth client IDs for each platform you're building for
+4.  Create environment variables file:
+    ```bash
+    cp .env.example .env
+    ```
+5.  Edit `.env` with your Supabase credentials:
+    ```env
+    SUPABASE_URL=your_supabase_project_url
+    SUPABASE_ANON_KEY=your_supabase_anon_key
+    GOOGLE_WEB_CLIENT_ID=your_google_web_client_id
+    GOOGLE_ANDROID_CLIENT_ID=your_google_android_client_id
+    GOOGLE_IOS_CLIENT_ID=your_google_ios_client_id
+    PRODUCTION_URL=https://flowrite.pi22by7.me
+    VERCEL_URL=https://flowrite-zeta.vercel.app
+    ```
 
 ## How to Contribute
 
@@ -125,7 +127,7 @@ Flowrite follows a standard Flutter project structure.
 - `lib/models`: Data models for the app (e.g., `Note`).
 - `lib/providers`: State management using Provider.
 - `lib/screens`: UI for different screens of the app.
-- `lib/services`: Business logic and services (e.g., Firebase service).
+- `lib/services`: Business logic and services (e.g., Supabase service).
 - `lib/widgets`: Reusable widgets.
 - `lib/utils`: Utility functions and constants.
 

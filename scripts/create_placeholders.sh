@@ -22,7 +22,7 @@ create_placeholder() {
     Screenshot placeholder
   </text>
   <text x="150" y="350" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#999">
-    Run ./scripts/complete_screenshots.sh
+    Run ./scripts/generate_screenshots.sh
   </text>
   <text x="150" y="370" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#999">
     to generate real screenshots
@@ -42,4 +42,4 @@ create_placeholder "dark_theme" "Dark Theme"
 create_placeholder "navigation_drawer" "Navigation Drawer"
 
 echo "✅ Placeholder screenshots created in assets/screenshots/"
-echo "📝 To generate real screenshots, run: ./scripts/complete_screenshots.sh"
+echo "📝 To generate real screenshots, run: ./scripts/generate_screenshots.sh"

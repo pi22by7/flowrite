@@ -21,9 +21,9 @@ These are the next major features we want to add to Flowrite.
 These items will improve the user experience and performance of the app.
 
 - [ ] **Improve Error Handling**: Provide more specific and user-friendly error messages. (Issue #)
-- [ ] **Implement Caching**: Cache frequently accessed data to improve performance and reduce Firebase reads. (Issue #)
-- [ ] **Improve Error Reporting**: Integrate a service like Firebase Crashlytics to automatically report crashes and errors. (Issue #)
-- [ ] **Add Analytics**: Use a service like Firebase Analytics to understand user behavior and guide future development. (Issue #)
+- [ ] **Implement Caching**: Cache frequently accessed data to improve performance and reduce Supabase reads. (Issue #)
+- [ ] **Improve Error Reporting**: Integrate a crash reporting service to automatically report crashes and errors. (Issue #)
+- [ ] **Add Analytics**: Integrate analytics to understand user behavior and guide future development. (Issue #)
 - [ ] **UI/UX Polish**:
   - [ ] Refine animations and transitions. (Issue #)
   - [ ] Improve layout on different screen sizes (e.g., tablets, foldable devices). _(Good first issue)_ (Issue #)
@@ -39,7 +39,6 @@ Known bugs that need to be addressed.
 
 Tasks related to the project's infrastructure and maintenance.
 
-- [ ] **CI/CD Pipeline**: Set up a continuous integration and continuous delivery pipeline (e.g., using GitHub Actions) to automate testing and builds. (Issue #)
 - [ ] **Documentation**:
   - [ ] Add API documentation using `dartdoc`. _(Good first issue)_ (Issue #)
   - [ ] Create a more detailed architecture overview. _(Good first issue)_ (Issue #)
@@ -51,6 +50,5 @@ Long-term ideas for the project.
 
 - [ ] **Collaboration Features**: Allow multiple users to collaborate on the same note in real-time. (Issue #)
 - [ ] **Export Options**: Add the ability to export notes to different formats (e.g., PDF, TXT). (Issue #)
-- [ ] **Web Version**: Create a web version of the app. (Issue #)
-- [ ] **Desktop Version**: Create desktop versions for Windows, macOS, and Linux. (Issue #)
 - [ ] **Plugin System**: Allow users to extend the app's functionality with plugins. (Issue #)
+- [ ] **Mobile App Store**: Publish to Google Play Store and Apple App Store. (Issue #)

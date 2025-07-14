@@ -18,6 +18,8 @@ We have optimized the GitHub Actions workflows to be more efficient:
   - `assets/screenshots/**`
 - **Pull requests**: Runs on PRs targeting main branch
 
+📖 **For detailed screenshot management and organization, see [assets/screenshots/README.md](../assets/screenshots/README.md)**
+
 #### Release Workflow (`.github/workflows/release.yml`)
 
 - **Tag-based releases**: Automatically triggers on version tags (e.g., `v1.1.0`)
@@ -150,8 +152,26 @@ You can also trigger releases manually from GitHub:
 
 The workflows use these environment variables:
 
-- `FLUTTER_VERSION`: Currently set to `3.24.0`
+- `FLUTTER_VERSION`: Currently set to `3.32.6`
 - `GITHUB_TOKEN`: Automatically provided by GitHub Actions
+
+### Required GitHub Secrets
+
+The following secrets must be configured in your GitHub repository settings (**Settings** → **Secrets and variables** → **Actions**):
+
+#### Supabase Configuration:
+- `SUPABASE_URL`: Your Supabase project URL
+- `SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
+#### Google OAuth Configuration:
+- `GOOGLE_WEB_CLIENT_ID`: Google OAuth client ID for web platform
+- `GOOGLE_ANDROID_CLIENT_ID`: Google OAuth client ID for Android
+- `GOOGLE_IOS_CLIENT_ID`: Google OAuth client ID for iOS
+
+#### Vercel Deployment (for web deployment):
+- `VERCEL_TOKEN`: Vercel authentication token
+- `VERCEL_ORG_ID`: Your Vercel organization ID  
+- `VERCEL_PROJECT_ID`: Your Vercel project ID
 
 ### Workflow Customization
 
