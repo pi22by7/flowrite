@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-platform authentication system with automatic platform detection
 - Environment variable configuration with .env file support
 - Supabase integration with PostgreSQL database and Row Level Security
+- **System theme support**: App now defaults to following device system theme (light/dark mode)
+- Enhanced theme toggle with System/Light/Dark mode cycling
 - Desktop platform support (Linux, macOS, Windows) with web-based OAuth
 - GitHub Secrets integration for CI/CD workflows
 - Database migration system with SQL schema files

@@ -83,7 +83,7 @@ This project is my contribution to that ideal—a foundation that others can lea
 - 🎨 **Material 3 Design**: Beautiful, modern UI with dynamic colors that adapt to your device's wallpaper (Android 12+)
 - 🔤 **Premium Typography**: Choose from carefully selected fonts designed for long-form writing and creative work
 - 📂 **Smart File Organization**: Sort, search, and organize your creative work with intuitive file management
-- 🌙 **Dark Mode**: Easy on the eyes during those late-night creative sessions
+- 🌙 **Adaptive Theme**: Automatically follows your device's dark/light mode settings, with manual override options
 - 🔐 **Secure Authentication**: Simple, secure Google Sign-in—no passwords to remember
 - 🚫 **Zero Ads, Zero Paywalls**: Your creative process is sacred and should never be interrupted
 
@@ -274,7 +274,7 @@ Pre-built releases are available for multiple platforms:
 ### ✅ Completed
 
 - [x] Basic app structure and UI
-- [x] Dark/Light theme support
+- [x] Adaptive theme support (System/Light/Dark)
 - [x] Local file storage
 - [x] Google Sign-in integration
 - [x] Supabase integration

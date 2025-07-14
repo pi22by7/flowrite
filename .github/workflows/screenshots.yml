@@ -2,19 +2,6 @@ name: Generate Screenshots
 
 on:
   workflow_dispatch: # Allow manual triggering
-  push:
-    branches: [ main ]
-    paths: 
-      - 'lib/screens/**'
-      - 'lib/widgets/**'
-      - 'integration_test/**'
-      - 'assets/screenshots/**'
-  pull_request:
-    branches: [ main ]
-    paths: 
-      - 'lib/screens/**'
-      - 'lib/widgets/**'
-      - 'integration_test/**'
 
 permissions:
   contents: write

@@ -168,16 +168,35 @@ Future<void> toggleToDarkTheme(
   await dismissModal(tester);
   await tester.pumpAndSettle(const Duration(seconds: 1));
 
-  // Look for dark mode button (appears in light mode)
+  // Look for theme buttons (system, dark mode, light mode)
+  final systemModeButtonFinder = find.byIcon(Icons.brightness_auto_rounded);
   final darkModeButtonFinder = find.byIcon(Icons.dark_mode_rounded);
   final lightModeButtonFinder = find.byIcon(Icons.light_mode_rounded);
 
+  debugPrint(
+      'System mode button found: ${systemModeButtonFinder.evaluate().isNotEmpty}');
   debugPrint(
       'Dark mode button found: ${darkModeButtonFinder.evaluate().isNotEmpty}');
   debugPrint(
       'Light mode button found: ${lightModeButtonFinder.evaluate().isNotEmpty}');
 
-  if (darkModeButtonFinder.evaluate().isNotEmpty) {
+  // Try to toggle to dark theme by tapping the theme button
+  if (systemModeButtonFinder.evaluate().isNotEmpty) {
+    debugPrint('App is in system mode, toggling to light mode...');
+    await tester.tap(systemModeButtonFinder.first, warnIfMissed: false);
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    
+    // Look for dark mode button after first toggle
+    final newDarkModeButtonFinder = find.byIcon(Icons.dark_mode_rounded);
+    if (newDarkModeButtonFinder.evaluate().isNotEmpty) {
+      debugPrint('Now toggling to dark mode...');
+      await tester.tap(newDarkModeButtonFinder.first, warnIfMissed: false);
+      await tester.pumpAndSettle(const Duration(seconds: 3));
+    }
+    
+    debugPrint('Taking dark_theme screenshot...');
+    await takeScreenshot(binding, tester, 'dark_theme');
+  } else if (darkModeButtonFinder.evaluate().isNotEmpty) {
     debugPrint('App is in light mode, toggling to dark mode...');
     await tester.tap(darkModeButtonFinder.first, warnIfMissed: false);
     await tester.pumpAndSettle(const Duration(seconds: 3));
