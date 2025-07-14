@@ -16,35 +16,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2025-07-14
 
-### BREAKING CHANGES
+### ✨ What's New
 
-- **Migration from Firebase to Supabase**: Complete backend replacement for universal platform support
-- **Environment variable configuration**: Secrets now managed via .env files instead of hardcoded values
-- **Platform support expansion**: Now supports Linux, macOS, Windows, Android, iOS, and Web platforms
-- **Authentication overhaul**: Cross-platform Google OAuth (web-based for desktop, native for mobile)
+- **🎨 System Theme Default**: Flowrite now automatically follows your device's system theme (light/dark mode)
+- **🔄 Smart Theme Cycling**: Enhanced theme toggle with System → Light → Dark sequence
+- **🌍 Universal Platform Support**: Now available for Android, iOS, Linux, macOS, Windows, and Web
+- **🔐 Cross-Platform Authentication**: Seamless Google login across all platforms with automatic platform detection
+- **📦 Multi-Platform Releases**: Automated builds for all supported platforms with graceful error handling
 
-### Added
+### 🚀 Major Improvements
 
-- Cross-platform authentication system with automatic platform detection
-- Environment variable configuration with .env file support
-- Supabase integration with PostgreSQL database and Row Level Security
-- **System theme support**: App now defaults to following device system theme (light/dark mode)
-- Enhanced theme toggle with System/Light/Dark mode cycling
-- Desktop platform support (Linux, macOS, Windows) with web-based OAuth
-- GitHub Secrets integration for CI/CD workflows
-- Database migration system with SQL schema files
+- **🏗️ Backend Migration**: Complete migration from Firebase to Supabase for better cross-platform support
+- **⚙️ Environment Configuration**: Secure .env file system for managing secrets and configuration
+- **🖥️ Desktop Experience**: Full desktop support with web-based OAuth for Linux, macOS, and Windows
+- **📱 Mobile Enhancement**: Improved mobile experience with native authentication flows
+- **🌐 Web Deployment**: Static web app deployment capability for any hosting service
 
-### Removed
+### 🔧 Technical Overhaul
 
-- Firebase integration (Cloud Firestore, Firebase Auth)
-- Firebase configuration files (google-services.json, GoogleService-Info.plist)
-- Platform-specific Firebase dependencies
+- **Database**: PostgreSQL with Row Level Security via Supabase
+- **Authentication**: Universal OAuth system with platform-specific implementations
+- **Build System**: GitHub Actions workflows with multi-platform artifact management
+- **Configuration**: Environment variable management via .env files and GitHub Secrets
+- **Migration Tools**: SQL schema migration system for database updates
 
-### Changed
+### 🗑️ Removed (Breaking Changes)
 
-- Build scripts now check for .env file configuration
-- CI/CD workflows updated to use GitHub Secrets for environment variables
-- Documentation updated to reflect Supabase setup requirements
+- **Firebase Integration**: Complete removal of Firebase (Cloud Firestore, Firebase Auth)
+- **Legacy Configuration**: Removed platform-specific Firebase config files
+- **Hardcoded Secrets**: Replaced with secure environment variable system
+
+> **Migration Note**: This is a major version with breaking changes. Users upgrading from v2.x will need to set up new authentication due to the backend migration from Firebase to Supabase.
 
 ## [2.0.0] - 2025-07-11
 

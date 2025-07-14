@@ -458,51 +458,102 @@ jobs:
           echo "Release will include the following files:"
           echo "$files"
 
+      # Generate user-friendly changelog
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          echo "Generating user-friendly changelog..."
+          
+          # Try to extract changelog section for current version from CHANGELOG.md
+          if [ -f "CHANGELOG.md" ]; then
+            echo "Found CHANGELOG.md, extracting version-specific content..."
+            
+            # Extract the section for current version
+            VERSION_SECTION=$(awk -v version="${{ needs.prepare.outputs.version }}" '
+              BEGIN { found=0; content="" }
+              /^## \[/ { 
+                if (found) exit
+                if ($0 ~ "\\[" version "\\]") found=1
+                next
+              }
+              found && /^## \[/ { exit }
+              found { content = content $0 "\n" }
+              END { print content }
+            ' CHANGELOG.md)
+            
+            if [ -n "$VERSION_SECTION" ]; then
+              echo "Found changelog section for v${{ needs.prepare.outputs.version }}"
+              changelog="$VERSION_SECTION"
+            else
+              echo "No specific changelog section found, generating from commits..."
+              changelog="## 🎉 What's New in v${{ needs.prepare.outputs.version }}"$'\n\n'"This release includes various improvements and updates. See the commit history for detailed changes."
+            fi
+          else
+            echo "No CHANGELOG.md found, generating from commits..."
+            
+            # Fallback: Get the previous tag for comparison
+            PREV_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^ 2>/dev/null || echo "")
+            
+            if [ -n "$PREV_TAG" ]; then
+              echo "Comparing $PREV_TAG to ${{ github.ref_name }}"
+              COMMITS=$(git log --pretty=format:"- %s" $PREV_TAG..${{ github.ref_name }} | head -10)
+              changelog="## 🎉 What's New in v${{ needs.prepare.outputs.version }}"$'\n\n'"### Recent Changes"$'\n'"$COMMITS"
+            else
+              changelog="## 🎉 Flowrite v${{ needs.prepare.outputs.version }}"$'\n\n'"This release includes the latest features and improvements."
+            fi
+          fi
+          
+          # Save changelog
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$changelog" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       # Create the actual release
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
-          name: Flowrite ${{ needs.prepare.outputs.version }} (Multi-Platform)
+          name: "🎨 Flowrite v${{ needs.prepare.outputs.version }}"
           draft: false
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
           body: |
-            # Flowrite ${{ needs.prepare.outputs.version }}
+            ${{ steps.changelog.outputs.changelog }}
             
-            ## Available Platforms
+            ## 📦 Available Downloads
             
-            This release includes builds for all available platforms. Some platforms may not be available due to build environment limitations.
+            This release includes builds for multiple platforms. Choose the right download for your system:
             
             ### 📱 Mobile
-            - **Android**: APK and App Bundle (Play Store ready)
-            - **iOS**: Unsigned IPA (requires code signing)
+            - **🤖 Android APK**: Direct install on Android devices (v5.0+)
+            - **📦 Android App Bundle**: For Google Play Store submission
+            - **🍎 iOS IPA**: Requires Xcode and developer certificate (v12.0+)
             
-            ### 🖥️ Desktop  
-            - **Linux**: Portable application bundle
-            - **macOS**: Unsigned app bundle (requires code signing)
-            - **Windows**: Portable executable
+            ### 🖥️ Desktop
+            - **🐧 Linux**: Portable application bundle (Ubuntu 18.04+)
+            - **🍎 macOS**: App bundle - may require Gatekeeper bypass (v10.14+)
+            - **🪟 Windows**: Portable executable (Windows 10+)
             
             ### 🌐 Web
-            - **Web**: Static files for web deployment
+            - **🌍 Web App**: Static files for web server deployment
             
-            ## Installation Notes
+            ## 🚀 Quick Install
             
-            - **Android**: Install the APK directly or submit the AAB to Play Store
-            - **iOS**: Requires Xcode and developer certificate for installation
-            - **Linux**: Extract and run the executable
-            - **macOS**: May require bypassing Gatekeeper for unsigned builds
-            - **Windows**: Extract and run the executable
-            - **Web**: Deploy the static files to any web server
+            **Android**: Download the APK and enable "Install from unknown sources" in your device settings.
             
-            ## System Requirements
+            **Desktop**: Extract the archive and run the executable. No installation required!
             
-            - **Android**: Android 5.0+ (API level 21+)
-            - **iOS**: iOS 12.0+
-            - **Linux**: Ubuntu 18.04+ or equivalent
-            - **macOS**: macOS 10.14+
-            - **Windows**: Windows 10+
-            - **Web**: Modern web browser with JavaScript enabled
+            **Web**: Download and deploy the web files to any static hosting service.
+            
+            ## 🆘 Need Help?
+            
+            - 📖 [Documentation](https://github.com/pi22by7/flowrite/blob/main/README.md)
+            - 🐛 [Report Issues](https://github.com/pi22by7/flowrite/issues)
+            - 💬 [Discussions](https://github.com/pi22by7/flowrite/discussions)
+            
+            ---
+            
+            **Full Changelog**: ${{ github.event.name == 'workflow_dispatch' && format('[{0}...{1}](https://github.com/pi22by7/flowrite/compare/{0}...{1})', 'v2.0.0', github.event.inputs.tag) || format('[{0}...{1}](https://github.com/pi22by7/flowrite/compare/{0}...{1})', 'v2.0.0', github.ref_name) }}
           files: ${{ steps.files.outputs.files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
