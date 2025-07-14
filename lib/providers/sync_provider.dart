@@ -1,20 +1,19 @@
 import 'dart:async';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
-import '../services/cloud_sync_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/supabase_auth_service.dart';
+import '../services/supabase_cloud_sync_service.dart';
 
 class SyncProvider extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final CloudSyncService _cloudSync = CloudSyncService();
+  final SupabaseAuthService _auth = SupabaseAuthService();
+  final SupabaseCloudSyncService _cloudSync = SupabaseCloudSyncService();
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
   User? get currentUser => _auth.currentUser;
-  bool get isSignedIn => currentUser != null;
-  String get userEmail => currentUser?.email ?? '';
+  bool get isSignedIn => _auth.isSignedIn;
+  String get userEmail => _auth.userEmail;
   Timer? _syncTimer;
 
   SyncProvider() {
@@ -24,7 +23,7 @@ class SyncProvider extends ChangeNotifier {
     });
   }
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  Stream<AuthState> get authStateChanges => _auth.authStateChanges;
 
   Future<void> checkPendingSyncs() async {
     if (!isSignedIn) {
@@ -66,31 +65,16 @@ class SyncProvider extends ChangeNotifier {
       _isSyncing = true;
       notifyListeners();
 
-      // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // Use the auth service to sign in
+      final response = await _auth.signInWithGoogle();
 
-      if (googleUser == null) return false;
-
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      // Create a new credential
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Sign in to Firebase with the credential
-      final userCredential = await _auth.signInWithCredential(credential);
+      if (response?.user == null) return false;
 
       // Initial sync after sign in
-      if (userCredential.user != null) {
-        await _cloudSync.syncPendingChanges();
-      }
+      await _cloudSync.syncPendingChanges();
 
       notifyListeners();
-      return userCredential.user != null;
+      return true;
     } catch (e) {
       debugPrint('Error signing in with Google: $e');
       return false;
@@ -105,10 +89,7 @@ class SyncProvider extends ChangeNotifier {
       _isSyncing = true;
       notifyListeners();
 
-      await Future.wait([
-        _auth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
+      await _auth.signOut();
     } finally {
       _isSyncing = false;
       notifyListeners();

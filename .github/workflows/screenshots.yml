@@ -42,6 +42,17 @@ jobs:
         flutter-version: ${{ env.FLUTTER_VERSION }}
         channel: 'stable'
     
+    - name: Create .env file
+      run: |
+        cat > .env << EOF
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+        GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+        DEEP_LINK_SCHEME=me.pi22by7.flowrite://login-callback
+        EOF
+    
     - name: Install dependencies
       run: flutter pub get
     

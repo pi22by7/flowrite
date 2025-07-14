@@ -6,14 +6,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/writing_file.dart';
 import '../providers/sync_provider.dart';
-import '../services/cloud_sync_service.dart';
+import '../services/supabase_cloud_sync_service.dart';
 
 class FileService {
-  final CloudSyncService _cloudSync;
+  final SupabaseCloudSyncService _cloudSync;
   static bool _migrationCompleted = false;
 
-  FileService({CloudSyncService? cloudSync})
-      : _cloudSync = cloudSync ?? CloudSyncService();
+  FileService({SupabaseCloudSyncService? cloudSync})
+      : _cloudSync = cloudSync ?? SupabaseCloudSyncService();
 
   Future<List<WritingFile>> getFiles(BuildContext context) async {
     final syncProvider = Provider.of<SyncProvider>(context, listen: false);

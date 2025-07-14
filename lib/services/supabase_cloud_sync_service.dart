@@ -1,28 +1,25 @@
 import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/writing_file.dart';
 
-class CloudSyncService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class SupabaseCloudSyncService {
+  final SupabaseClient _supabase = Supabase.instance.client;
   static const String _lastSyncKey = 'last_sync_timestamp';
   static const String _localFilesKey = 'local_files';
 
-  String get _userId => _auth.currentUser?.uid ?? '';
-
+  String get _userId => _supabase.auth.currentUser?.id ?? '';
   bool get isSignedIn => _userId.isNotEmpty;
 
   Future<bool> get isOnline async {
     try {
-      await _firestore.runTransaction((transaction) async {
-        // Just a lightweight check
-        await transaction.get(_firestore.collection('health').doc('status'));
-      }, timeout: const Duration(seconds: 5));
+      // Simple connectivity check by making a lightweight query
+      await _supabase
+          .from('user_files')
+          .select('id')
+          .limit(1)
+          .withConverter((data) => data);
       return true;
     } catch (e) {
       return false;
@@ -52,20 +49,17 @@ class CloudSyncService {
         return false;
       }
 
-      // Update cloud with timeout
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('files')
-          .doc(file.id)
-          .set({
+      // Upsert to Supabase (insert or update)
+      await _supabase.from('user_files').upsert({
+        'id': file.id,
+        'user_id': _userId,
         'name': file.name,
         'content': content,
-        'lastModified': FieldValue.serverTimestamp(),
+        'last_modified': file.lastModified.toIso8601String(),
       }).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          throw Exception('Firestore write timeout');
+          throw Exception('Supabase upsert timeout');
         },
       );
 
@@ -88,12 +82,11 @@ class CloudSyncService {
 
     try {
       // Delete from cloud
-      await _firestore
-          .collection('users')
-          .doc(_userId)
-          .collection('files')
-          .doc(fileId)
-          .delete();
+      await _supabase
+          .from('user_files')
+          .delete()
+          .eq('id', fileId)
+          .eq('user_id', _userId);
 
       // Remove from local metadata
       await _removeLocalFileMetadata(fileId);
@@ -106,17 +99,17 @@ class CloudSyncService {
   Stream<List<WritingFile>> getFilesStream() {
     if (_userId.isEmpty) return Stream.value([]);
 
-    return _firestore
-        .collection('users')
-        .doc(_userId)
-        .collection('files')
-        .orderBy('lastModified', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => WritingFile(
-                  id: doc.id,
-                  name: doc['name'],
-                  content: doc['content'],
+    return _supabase
+        .from('user_files')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', _userId)
+        .order('last_modified', ascending: false)
+        .map((data) => data
+            .map((item) => WritingFile(
+                  id: item['id'],
+                  name: item['name'],
+                  content: item['content'],
+                  lastModified: DateTime.parse(item['last_modified']),
                 ))
             .toList());
   }
@@ -138,40 +131,39 @@ class CloudSyncService {
 
       debugPrint('Syncing ${localFiles.length} modified files to cloud');
 
-      // Check online status before attempting batch write
+      // Check online status before attempting sync
       final isOnline = await this.isOnline;
       if (!isOnline) {
         debugPrint('Device is offline, cannot sync to cloud');
         return;
       }
 
-      // Batch write to Firestore with timeout
-      final batch = _firestore.batch();
-      final userFilesRef =
-          _firestore.collection('users').doc(_userId).collection('files');
+      // Batch upsert to Supabase
+      List<Map<String, dynamic>> filesToSync = [];
 
       for (var file in localFiles) {
         try {
           final content = await file.readContent();
-          batch.set(
-              userFilesRef.doc(file.id),
-              {
-                'name': file.name,
-                'content': content,
-                'lastModified': FieldValue.serverTimestamp(),
-              },
-              SetOptions(merge: true));
+          filesToSync.add({
+            'id': file.id,
+            'user_id': _userId,
+            'name': file.name,
+            'content': content,
+            'last_modified': file.lastModified.toIso8601String(),
+          });
         } catch (e) {
           debugPrint('Error preparing file ${file.id} for sync: $e');
         }
       }
 
-      await batch.commit().timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          throw Exception('Batch commit timeout');
-        },
-      );
+      if (filesToSync.isNotEmpty) {
+        await _supabase.from('user_files').upsert(filesToSync).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw Exception('Batch upsert timeout');
+          },
+        );
+      }
 
       // Update local metadata for all synced files
       for (var file in localFiles) {
@@ -263,7 +255,7 @@ class CloudSyncService {
     }
   }
 
-  // Add method to clear all sync data (useful for logout)
+  // Clear all sync data (useful for logout)
   Future<void> clearSyncData() async {
     try {
       final prefs = await SharedPreferences.getInstance();

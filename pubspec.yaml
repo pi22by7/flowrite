@@ -34,11 +34,11 @@ dependencies:
   provider: ^6.1.5
   path: ^1.9.0
   shared_preferences: ^2.5.3
-  firebase_core: ^3.15.1
-  firebase_auth: ^5.6.2
-  cloud_firestore: ^5.6.11
+  supabase_flutter: ^2.3.4
   google_sign_in: ^6.3.0
   dynamic_color: ^1.7.0
+  url_launcher: ^6.2.1
+  flutter_dotenv: ^5.1.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -67,6 +67,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Assets including .env file and screenshots
+  assets:
+    - .env
+    - assets/screenshots/
 
   fonts:
     - family: Inter
@@ -107,10 +112,6 @@ flutter:
     - family: Fascinate
       fonts:
         - asset: assets/fonts/Fascinate-Regular.ttf
-
-  # To add assets to your application, add an assets section, like this:
-  assets:
-    - assets/screenshots/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
