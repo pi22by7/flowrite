@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.0.1] - 2025-07-14
+## [3.1.0] - 2025-07-14
 
 ### ✨ Added
 - **💾 Settings Persistence**: Theme preferences now persist across app restarts
