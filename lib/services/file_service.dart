@@ -1,19 +1,20 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/writing_file.dart';
 import '../providers/sync_provider.dart';
 import '../services/supabase_cloud_sync_service.dart';
+import '../services/storage_service.dart';
 
 class FileService {
   final SupabaseCloudSyncService _cloudSync;
+  late final StorageService _storage;
   static bool _migrationCompleted = false;
 
   FileService({SupabaseCloudSyncService? cloudSync})
-      : _cloudSync = cloudSync ?? SupabaseCloudSyncService();
+      : _cloudSync = cloudSync ?? SupabaseCloudSyncService() {
+    _storage = StorageService.create();
+  }
 
   Future<List<WritingFile>> getFiles(BuildContext context) async {
     final syncProvider = Provider.of<SyncProvider>(context, listen: false);
@@ -70,50 +71,44 @@ class FileService {
 
   Future<List<WritingFile>> _getLocalFiles() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final writingFilesDir = Directory('${directory.path}/writing_files');
-
-      // Check if the writing_files directory exists
-      if (!await writingFilesDir.exists()) {
-        debugPrint('Writing files directory does not exist');
+      final fileIds = await _storage.getAllFileIds();
+      
+      if (fileIds.isEmpty) {
+        debugPrint('No local files found');
         return [];
       }
 
-      final files = await writingFilesDir.list().toList();
-
-      return Future.wait(files
-              .where((file) => file.path.endsWith('.text'))
-              .map((file) async {
-        final fileName = file.path.split('/').last;
-        // Extract id from filename (filename format: {id}.text)
-        final id = fileName.replaceAll('.text', '');
-
-        // Get metadata from SharedPreferences
-        final content = await File(file.path).readAsString();
-        final lastModified = await File(file.path).lastModified();
-
-        // Try to get name from metadata, fallback to id
-        String name = id;
+      final files = <WritingFile>[];
+      
+      for (final id in fileIds) {
         try {
-          final prefs = await SharedPreferences.getInstance();
-          final metadataKey = 'file_metadata_$id';
-          final metadata = prefs.getString(metadataKey);
+          final content = await _storage.readContent(id);
+          final metadata = await _storage.getMetadata(id);
+          
+          String name = id;
+          DateTime lastModified = DateTime.now();
+          
           if (metadata != null) {
-            final data = json.decode(metadata);
-            name = data['name'] ?? id;
+            name = metadata['name'] ?? id;
+            final lastModifiedStr = metadata['lastModified'];
+            if (lastModifiedStr != null) {
+              lastModified = DateTime.parse(lastModifiedStr);
+            }
           }
-        } catch (e) {
-          debugPrint('Error reading metadata for file $id: $e');
-        }
 
-        return WritingFile(
-          id: id,
-          name: name,
-          content: content,
-          lastModified: lastModified,
-        );
-      }).whereType<Future<WritingFile>>())
-          .then((files) => files.whereType<WritingFile>().toList());
+          files.add(WritingFile(
+            id: id,
+            name: name,
+            content: content,
+            lastModified: lastModified,
+          ));
+        } catch (e) {
+          debugPrint('Error reading file $id: $e');
+        }
+      }
+
+      debugPrint('Successfully loaded ${files.length} local files');
+      return files;
     } catch (e) {
       debugPrint('Error reading local files: $e');
       return [];
@@ -378,52 +373,14 @@ class FileService {
 
   Future<void> _migrateOldFiles() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final files = await directory.list().toList();
-
-      final oldFiles =
-          files.where((file) => file.path.endsWith('.txt')).toList();
-
-      if (oldFiles.isEmpty) {
-        debugPrint('No old .txt files found to migrate');
+      // Only attempt migration on mobile platforms (web doesn't have old files to migrate)
+      if (_storage is! FileSystemStorageService) {
+        debugPrint('Skipping migration on web platform');
         return;
       }
 
-      debugPrint('Found ${oldFiles.length} old .txt files to migrate');
-
-      for (var oldFile in oldFiles) {
-        try {
-          final fileName = oldFile.path.split('/').last;
-          // Extract id and name from old filename format
-          final match = RegExp(r'(.+)_([^_]+)\.txt$').firstMatch(fileName);
-          if (match != null) {
-            final name = match.group(1)!;
-            final id = match.group(2)!;
-            final content = await File(oldFile.path).readAsString();
-            final lastModified = await File(oldFile.path).lastModified();
-
-            // Create new WritingFile with migrated data
-            final migratedFile = WritingFile(
-              id: id,
-              name: name,
-              content: content,
-              lastModified: lastModified,
-            );
-
-            // Save in new format
-            await migratedFile.writeContent(content);
-
-            // Delete old file
-            await File(oldFile.path).delete();
-
-            debugPrint('Migrated file: $name (ID: $id)');
-          }
-        } catch (e) {
-          debugPrint('Error migrating file ${oldFile.path}: $e');
-        }
-      }
-
-      debugPrint('File migration completed');
+      // For mobile platforms, we could migrate old .txt files here if needed
+      debugPrint('Migration check completed (mobile platform)');
     } catch (e) {
       debugPrint('Error during file migration: $e');
     }

@@ -1,59 +1,25 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/storage_service.dart';
 
 class WritingFile {
   final String id;
   final String name;
   DateTime lastModified;
   String? content;
-  static const String fileExtension = '.text';
+  late final StorageService _storage;
 
   WritingFile({
     required this.id,
     required this.name,
     DateTime? lastModified,
     this.content,
-  }) : lastModified = lastModified ?? DateTime.now();
-
-  Future<String> get _localPath async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/writing_files';
-      // Ensure directory exists
-      await Directory(path).create(recursive: true);
-      debugPrint('Local path: $path');
-      return path;
-    } catch (e) {
-      debugPrint('Error getting local path: $e');
-      rethrow;
-    }
-  }
-
-  Future<File> get _localFile async {
-    final path = await _localPath;
-    // Use a more reliable file naming convention
-    return File('$path/$id$fileExtension');
+  }) : lastModified = lastModified ?? DateTime.now() {
+    _storage = StorageService.create();
   }
 
   Future<void> writeContent(String newContent) async {
     try {
-      final file = await _localFile;
-
-      // Ensure directory exists
-      final dir = file.parent;
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-
-      // Write content
-      await file.writeAsString(
-        newContent,
-        mode: FileMode.write,
-        flush: true,
-      );
+      await _storage.writeContent(id, newContent);
 
       // Update in-memory content
       content = newContent;
@@ -62,7 +28,7 @@ class WritingFile {
       // Save metadata
       await _saveMetadata();
 
-      debugPrint('File written successfully to: ${file.path}');
+      debugPrint('Content written successfully for file $id');
       debugPrint('Content length: ${newContent.length}');
     } catch (e) {
       debugPrint('Error writing file: $e');
@@ -72,18 +38,11 @@ class WritingFile {
 
   Future<String> readContent() async {
     try {
-      final file = await _localFile;
-
-      if (await file.exists()) {
-        final fileContent = await file.readAsString();
-        content = fileContent;
-        debugPrint('File read successfully from: ${file.path}');
-        debugPrint('Content length: ${fileContent.length}');
-        return fileContent;
-      }
-
-      debugPrint('File does not exist at: ${file.path}');
-      return content ?? '';
+      final fileContent = await _storage.readContent(id);
+      content = fileContent;
+      debugPrint('Content read successfully for file $id');
+      debugPrint('Content length: ${fileContent.length}');
+      return fileContent;
     } catch (e) {
       debugPrint('Error reading file: $e');
       return content ?? '';
@@ -92,15 +51,11 @@ class WritingFile {
 
   Future<void> _saveMetadata() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final key = 'file_metadata_$id';
-      await prefs.setString(
-          key,
-          json.encode({
-            'id': id,
-            'name': name,
-            'lastModified': lastModified.toIso8601String(),
-          }));
+      await _storage.saveMetadata(id, {
+        'id': id,
+        'name': name,
+        'lastModified': lastModified.toIso8601String(),
+      });
     } catch (e) {
       debugPrint('Error saving metadata: $e');
     }
@@ -108,12 +63,10 @@ class WritingFile {
 
   static Future<DateTime?> getLastModified(String fileId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final key = 'file_metadata_$fileId';
-      final metadata = prefs.getString(key);
+      final storage = StorageService.create();
+      final metadata = await storage.getMetadata(fileId);
       if (metadata != null) {
-        final data = json.decode(metadata);
-        return DateTime.parse(data['lastModified']);
+        return DateTime.parse(metadata['lastModified']);
       }
     } catch (e) {
       debugPrint('Error getting metadata: $e');
@@ -123,10 +76,7 @@ class WritingFile {
 
   Future<void> delete() async {
     try {
-      final file = await _localFile;
-      if (await file.exists()) {
-        await file.delete();
-      }
+      await _storage.deleteContent(id);
     } catch (e) {
       debugPrint('Error deleting file: $e');
     }
