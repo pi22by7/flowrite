@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.1] - 2025-07-16
+
+### 🐛 Fixed
+
+- **Web Platform File Saving**: Fixed file saving functionality on web browsers
+- **Cross-Platform Storage**: Added platform-specific storage abstraction (web uses browser storage, mobile uses file system)
+- **File Persistence**: Files now properly persist across browser sessions on web platform
+
 ## [3.2.0] - 2025-07-14
 
 ### ✨ Added
