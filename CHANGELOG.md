@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2025-07-16
+
+### ✨ Enhanced
+
+- **Syllable Counting**: Replaced manual dictionary with `english_words` package for more accurate and comprehensive syllable counting
+- **Rhyme Detection**: Implemented CMU Pronouncing Dictionary integration for professional-grade rhyme detection using actual pronunciation data
+- **Phonetic Analysis**: Uses the same pronunciation database as commercial speech software (CMU Sphinx, Festival TTS)
+- **Bundled Dictionary**: CMU dictionary (126K+ words) now bundled with app for instant offline rhyme detection
+- **Performance**: Lightning-fast rhyme detection with no network dependencies or caching complexity
+- **Fallback System**: Graceful degradation to rule-based rhyme detection for edge cases
+- **Memory Management**: Added cache clearing methods to prevent memory leaks during extended usage
+
+### 🔧 Fixed
+
+- **macOS Build**: Updated deployment target to 11.0 for Google Sign-In iOS compatibility
+
 ## [3.2.1] - 2025-07-16
 
 ### 🐛 Fixed

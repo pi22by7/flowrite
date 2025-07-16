@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/pi22by7/flowrite?style=for-the-badge&logo=github)](https://github.com/pi22by7/flowrite/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/release.yml?style=for-the-badge&logo=github-actions)](https://github.com/pi22by7/flowrite/actions/workflows/release.yml)
 
-**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v3.2.1** | **Flutter: 3.32.6**
+**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v3.3.0** | **Flutter: 3.32.6**
 
 Flowrite is a modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. With seamless cloud sync, a clean interface, and robust offline support, your creative process has never been more fluid.
 
@@ -80,6 +80,8 @@ This project is my contribution to that ideal—a foundation that others can lea
 - ☁️ **Seamless Cloud Sync**: Access your work across all devices with Supabase—your lyrics follow you everywhere
 - 📱 **Reliable Offline Support**: Write anywhere, anytime. No internet? No problem. Your changes sync automatically when you're back online
 - 💾 **Auto-save**: Never lose a brilliant line again with automatic saving as you type
+- 🎵 **Professional Rhyme Detection**: Uses the CMU Pronouncing Dictionary (126K+ words) for accurate pronunciation-based rhyme detection—the same database used by professional speech software
+- 📊 **Smart Syllable Counting**: Accurate syllable counting powered by linguistic algorithms for perfect meter tracking
 - 🎨 **Material 3 Design**: Beautiful, modern UI with dynamic colors that adapt to your device's wallpaper (Android 12+)
 - 🔤 **Premium Typography**: Choose from carefully selected fonts designed for long-form writing and creative work
 - 📂 **Smart File Organization**: Sort, search, and organize your creative work with intuitive file management

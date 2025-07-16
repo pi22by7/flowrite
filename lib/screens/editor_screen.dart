@@ -34,6 +34,18 @@ class _EditorScreenState extends State<EditorScreen> {
     super.initState();
     _loadContent();
     _controller.addListener(_onTextChanged);
+    _initializeRhymeService();
+  }
+  
+  Future<void> _initializeRhymeService() async {
+    try {
+      await _rhymeService.initialize();
+      if (mounted) {
+        setState(() {}); // Refresh UI to show CMU status
+      }
+    } catch (e) {
+      print('Failed to initialize rhyme service: $e');
+    }
   }
 
   Future<void> _loadContent() async {
