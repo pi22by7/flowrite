@@ -12,7 +12,7 @@ class SupabaseConfig {
   // Dynamic redirect URL based on environment
   static String get redirectUrl {
     if (kIsWeb) {
-      // For web builds, use the production URL or fallback to Vercel URL
+      // For web builds, use the production URL or fallback to localhost
       final productionUrl = dotenv.env['PRODUCTION_URL'];
       if (productionUrl != null && productionUrl.isNotEmpty) {
         return '$productionUrl/';
@@ -24,8 +24,19 @@ class SupabaseConfig {
       }
       
       return 'http://localhost:3000/'; // Fallback for local development
+    } else if (defaultTargetPlatform == TargetPlatform.linux ||
+               defaultTargetPlatform == TargetPlatform.macOS ||
+               defaultTargetPlatform == TargetPlatform.windows) {
+      // For desktop platforms, we'll handle this differently in the auth service
+      return deepLinkScheme;
     }
-    return 'me.pi22by7.flowrite://login-callback'; // For mobile apps
+    // For mobile apps, use deep link scheme  
+    return 'me.pi22by7.flowrite://login-callback';
+  }
+  
+  // Callback URL scheme for flutter_web_auth_2 on desktop
+  static String get desktopCallbackScheme {
+    return 'http'; // Use http scheme for localhost
   }
 
   // Google OAuth Client IDs for different platforms

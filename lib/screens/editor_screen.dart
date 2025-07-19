@@ -36,7 +36,7 @@ class _EditorScreenState extends State<EditorScreen> {
     _controller.addListener(_onTextChanged);
     _initializeRhymeService();
   }
-  
+
   Future<void> _initializeRhymeService() async {
     try {
       await _rhymeService.initialize();
@@ -44,7 +44,7 @@ class _EditorScreenState extends State<EditorScreen> {
         setState(() {}); // Refresh UI to show CMU status
       }
     } catch (e) {
-      print('Failed to initialize rhyme service: $e');
+      debugPrint('Failed to initialize rhyme service: $e');
     }
   }
 

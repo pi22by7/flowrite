@@ -88,6 +88,7 @@ class WritingFile {
       'id': id,
       'name': name,
       'content': content,
+      'lastModified': lastModified.toIso8601String(),
     };
   }
 
@@ -97,6 +98,9 @@ class WritingFile {
       id: json['id'],
       name: json['name'],
       content: json['content'],
+      lastModified: json['lastModified'] != null 
+          ? DateTime.parse(json['lastModified'])
+          : DateTime.now(),
     );
   }
 

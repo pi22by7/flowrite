@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.1] - 2025-07-19
+
+### ✨ Added
+
+- **Linux Desktop Authentication**: Implemented complete Google Sign-In support for Linux desktop using temporary OAuth server with proper token handling
+
 ### 🔧 Fixed
 
 - **macOS Build**: Fixed macOS deployment target from 11.0 to 10.15 to resolve Google Sign-In iOS plugin compatibility issues
+- **Desktop OAuth Flow**: Fixed authentication token parsing for desktop platforms using Supabase OAuth implicit flow
+- **Cross-Platform Authentication**: Resolved platform-specific authentication routing for consistent sign-in experience
 
 ## [3.3.0] - 2025-07-16
 

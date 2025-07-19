@@ -52,7 +52,7 @@ class FileService {
         debugPrint('Found ${cloudFiles.length} cloud files');
 
         // Merge files, preserving local versions when in doubt
-        return _mergeFiles(cloudFiles, localFiles);
+        return await _mergeFiles(cloudFiles, localFiles);
       } catch (e) {
         debugPrint('Error getting cloud files: $e, returning local files');
         return localFiles;
@@ -115,8 +115,8 @@ class FileService {
     }
   }
 
-  List<WritingFile> _mergeFiles(
-      List<WritingFile> cloudFiles, List<WritingFile> localFiles) {
+  Future<List<WritingFile>> _mergeFiles(
+      List<WritingFile> cloudFiles, List<WritingFile> localFiles) async {
     final Map<String, WritingFile> mergedFiles = {};
 
     // Add local files first (prioritize local changes)
@@ -137,18 +137,31 @@ class FileService {
         // This helps avoid issues with slight timestamp differences
         if (cloudFile.lastModified
             .isAfter(localFile.lastModified.add(const Duration(seconds: 1)))) {
-          mergedFiles[cloudFile.id] = cloudFile;
-          debugPrint(
-              'Using cloud version of file ${cloudFile.id} (${cloudFile.name}) as it\'s newer');
+          // Save cloud version locally
+          try {
+            await cloudFile.writeContent(cloudFile.content ?? '');
+            mergedFiles[cloudFile.id] = cloudFile;
+            debugPrint(
+                'Using cloud version of file ${cloudFile.id} (${cloudFile.name}) as it\'s newer - saved locally');
+          } catch (e) {
+            debugPrint('Failed to save cloud file locally: $e, keeping local version');
+          }
         } else {
           debugPrint(
               'Keeping local version of file ${localFile.id} (${localFile.name})');
         }
       } else {
-        // File doesn't exist locally, add cloud version
-        mergedFiles[cloudFile.id] = cloudFile;
-        debugPrint(
-            'Adding cloud-only file ${cloudFile.id} (${cloudFile.name})');
+        // File doesn't exist locally, add cloud version and save it locally
+        try {
+          await cloudFile.writeContent(cloudFile.content ?? '');
+          mergedFiles[cloudFile.id] = cloudFile;
+          debugPrint(
+              'Adding cloud-only file ${cloudFile.id} (${cloudFile.name}) - saved locally');
+        } catch (e) {
+          debugPrint('Failed to save cloud-only file locally: $e');
+          // Still add it to the list, but it won't persist across restarts
+          mergedFiles[cloudFile.id] = cloudFile;
+        }
       }
     }
 
