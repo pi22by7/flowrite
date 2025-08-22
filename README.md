@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo/Light Logo.svg" alt="Flowrite Logo" width="400">
+  <img src="assets/logo/Light Logo.svg" alt="Flowrite Logo" width="200">
 </div>
 
 # Flowrite 📝
