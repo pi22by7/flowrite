@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔧 Fixed
 
 - **Accessibility**: Fixed + New button text color to meet WCAG contrast standards with proper theme-consistent colors
+- **iOS Build**: Fixed Xcode simulator runtime version compatibility issues
+- **macOS Build**: Updated macOS deployment target to 10.15+ for Flutter Assemble target to resolve google_sign_in_ios plugin compatibility
+- **Production Logging**: Suppressed debug logs in release builds to prevent sensitive information exposure
+
+### 🚀 Improved
+
+- **Desktop Authentication**: Enhanced OAuth success pages with professional Flowrite branding, Spectral wordmark, theme responsiveness, and improved user experience
+
+### 📦 Dependencies
+
+- Updated dependencies
 
 ## [3.3.2] - 2025-08-22
 

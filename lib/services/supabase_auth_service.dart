@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -107,19 +108,72 @@ class SupabaseAuthService {
             debugPrint('Received full callback URL: $fullUrl');
 
             // Send success response
+            final successHtml = '''<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Complete - Flowrite</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #FAFBFC 0%, #F8FAFC 100%);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      color: #14161A;
+    }
+    .container {
+      text-align: center; background: white; padding: 48px 32px;
+      border-radius: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid #E3E6EE; max-width: 400px; width: 90%;
+    }
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(135deg, #1A1A1A 0%, #2A2A2A 100%);
+        color: #FAFBFC;
+      }
+      .container {
+        background: #2B1E2F; border: 1px solid #3D4047;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      h1 { color: #2AB3A6; }
+      p { color: #E3E6EE; }
+      .footer { color: #8B9199; }
+      .brand { color: #2AB3A6; }
+    }
+    .logo {
+      margin: 0 auto 24px; padding: 16px 24px; background: #1A7B72;
+      border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 28px; font-weight: 500; font-family: 'Spectral', serif;
+      letter-spacing: -0.02em;
+    }
+    .checkmark {
+      width: 24px; height: 24px; background: #1A7B72; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: white; margin-bottom: 16px;
+    }
+    h1 { font-size: 28px; font-weight: 700; color: #1A7B72; margin-bottom: 12px; }
+    p { font-size: 16px; color: #3D4047; line-height: 1.5; margin-bottom: 24px; }
+    .footer { font-size: 14px; color: #8B9199; opacity: 0.8; }
+    .brand { font-weight: 600; color: #1A7B72; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Flowrite</div>
+    <div class="checkmark">&#10003;</div>
+    <h1>Authentication Successful!</h1>
+    <p>You've successfully signed in to <span class="brand">Flowrite</span>. You can now close this window and return to the app to start writing.</p>
+    <div class="footer">Window will close automatically...</div>
+  </div>
+  <script>setTimeout(() => { window.close(); }, 2000);</script>
+</body>
+</html>''';
+            
             request.response
               ..statusCode = 200
-              ..headers.set('Content-Type', 'text/html')
-              ..write('''
-                <html>
-                  <head><title>Authentication Complete</title></head>
-                  <body>
-                    <h1>Authentication Successful!</h1>
-                    <p>You can close this window and return to the app.</p>
-                    <script>window.close();</script>
-                  </body>
-                </html>
-              ''');
+              ..headers.set('Content-Type', 'text/html; charset=utf-8')
+              ..add(utf8.encode(successHtml));
             await request.response.close();
 
             if (!callbackCompleter.isCompleted) {
@@ -128,27 +182,80 @@ class SupabaseAuthService {
           }
         } else if (request.uri.path == '/' && !callbackCompleter.isCompleted) {
           // Send initial page with JavaScript to capture tokens
+          final processingHtml = '''<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Complete - Flowrite</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #FAFBFC 0%, #F8FAFC 100%);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      color: #14161A;
+    }
+    .container {
+      text-align: center; background: white; padding: 48px 32px;
+      border-radius: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid #E3E6EE; max-width: 400px; width: 90%;
+    }
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(135deg, #1A1A1A 0%, #2A2A2A 100%);
+        color: #FAFBFC;
+      }
+      .container {
+        background: #2B1E2F; border: 1px solid #3D4047;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      h1 { color: #2AB3A6; }
+      p { color: #E3E6EE; }
+      .footer { color: #8B9199; }
+      .brand { color: #2AB3A6; }
+    }
+    .logo {
+      margin: 0 auto 24px; padding: 16px 24px; background: #1A7B72;
+      border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 28px; font-weight: 500; font-family: 'Spectral', serif;
+      letter-spacing: -0.02em;
+    }
+    .spinner {
+      width: 24px; height: 24px; border: 3px solid #E3E6EE;
+      border-top: 3px solid #1A7B72; border-radius: 50%;
+      animation: spin 1s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    h1 { font-size: 28px; font-weight: 700; color: #1A7B72; margin-bottom: 12px; }
+    p { font-size: 16px; color: #3D4047; line-height: 1.5; margin-bottom: 24px; }
+    .footer { font-size: 14px; color: #8B9199; opacity: 0.8; }
+    .brand { font-weight: 600; color: #1A7B72; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Flowrite</div>
+    <div class="spinner"></div>
+    <h1>Processing Authentication...</h1>
+    <p>Completing your sign-in to <span class="brand">Flowrite</span>. Please wait a moment.</p>
+    <div class="footer">Redirecting automatically...</div>
+  </div>
+  <script>
+    if (window.location.hash) {
+      const encodedUrl = encodeURIComponent(window.location.href);
+      window.location.href = '/auth/callback?url=' + encodedUrl;
+    } else {
+      setTimeout(() => { window.close(); }, 1000);
+    }
+  </script>
+</body>
+</html>''';
+          
           request.response
             ..statusCode = 200
-            ..headers.set('Content-Type', 'text/html')
-            ..write('''
-              <html>
-                <head><title>Authentication Complete</title></head>
-                <body>
-                  <h1>Authentication Successful!</h1>
-                  <p>You can close this window and return to the app.</p>
-                  <script>
-                    // Send the full URL with fragment to the server via GET request
-                    if (window.location.hash) {
-                      const encodedUrl = encodeURIComponent(window.location.href);
-                      window.location.href = '/auth/callback?url=' + encodedUrl;
-                    } else {
-                      window.close();
-                    }
-                  </script>
-                </body>
-              </html>
-            ''');
+            ..headers.set('Content-Type', 'text/html; charset=utf-8')
+            ..add(utf8.encode(processingHtml));
           await request.response.close();
           debugPrint('Sent initial page, waiting for JavaScript redirect...');
         }

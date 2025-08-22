@@ -1,4 +1,5 @@
 import 'package:flowrite/providers/settings_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
@@ -10,6 +11,11 @@ import 'supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Suppress debug logs in production
+  if (kReleaseMode) {
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
 
   // Load environment variables
   await dotenv.load(fileName: ".env");
