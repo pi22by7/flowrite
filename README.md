@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/logo/Light Logo.svg" alt="Flowrite Logo" width="400">
+</div>
+
 # Flowrite 📝
 
 ![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
@@ -8,7 +12,7 @@
 [![Release](https://img.shields.io/github/v/release/pi22by7/flowrite?style=for-the-badge&logo=github)](https://github.com/pi22by7/flowrite/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/release.yml?style=for-the-badge&logo=github-actions)](https://github.com/pi22by7/flowrite/actions/workflows/release.yml)
 
-**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v3.3.1** | **Flutter: 3.32.6**
+**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v3.3.2** | **Flutter: 3.32.6**
 
 Flowrite is a modern, intuitive songwriting and poetry app designed to help creators capture their inspiration anywhere, anytime. With seamless cloud sync, a clean interface, and robust offline support, your creative process has never been more fluid.
 

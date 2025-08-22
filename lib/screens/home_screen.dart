@@ -195,12 +195,28 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Flowrite',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.w300,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Image.asset(
+                      Theme.of(context).brightness == Brightness.light
+                          ? 'assets/logo/Logomark Transparent Background.png'
+                          : 'assets/logo/Logomark Transparent Background.png',
+                      height: 28,
+                      fit: BoxFit.fitHeight,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Flowrite',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontFamily: 'Spectral',
+                        fontWeight: FontWeight.w400,
                         letterSpacing: -0.5,
+                        height: 1.0,
                       ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -507,9 +523,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: colorScheme.onPrimary,
                   size: 20,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
-                  'New Song',
+                  'New',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: colorScheme.onPrimary,
                         fontWeight: FontWeight.w500,

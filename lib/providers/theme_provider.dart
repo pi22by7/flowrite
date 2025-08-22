@@ -170,11 +170,18 @@ class ThemeProvider extends ChangeNotifier {
   static final _lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF6246EA), // Deep Purple
-      brightness: Brightness.light,
+    colorScheme: const ColorScheme.light(
+      primary: Color(0xFF1A7B72), // Flow Teal (Dark) - for light theme
+      onPrimary: Color(0xFF091313), // On Accent
+      secondary: Color(0xFF2B1E2F), // Deep Aubergine
+      onSecondary: Color(0xFFFAFBFC), // Porcelain
+      tertiary: Color(0xFF58465D), // Smoky Aubergine
+      surface: Color(0xFFFAFBFC), // Porcelain
+      onSurface: Color(0xFF14161A), // Primary Text
+      onSurfaceVariant: Color(0xFF3D4047), // Secondary Text
+      outline: Color(0xFFE3E6EE), // Dividers/Borders
     ),
-    // Material 3 Expressive Typography
+    fontFamily: 'Work Sans',
     textTheme: _createExpressiveTextTheme(Brightness.light),
     // Material 3 Expressive Shapes
     cardTheme: CardThemeData(
@@ -266,11 +273,18 @@ class ThemeProvider extends ChangeNotifier {
   static final _darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF6246EA), // Deep Purple
-      brightness: Brightness.dark,
+    colorScheme: const ColorScheme.dark(
+      primary: Color(0xFF2AB3A6), // Flow Teal (Bright) - for dark theme
+      onPrimary: Color(0xFF0A1917), // On Accent
+      secondary: Color(0xFF2B1E2F), // Deep Aubergine
+      onSecondary: Color(0xFFFAFBFC), // Porcelain
+      tertiary: Color(0xFF58465D), // Smoky Aubergine
+      surface: Color(0xFF0E0F12), // Graphite
+      onSurface: Color(0xFFE8EAF0), // Primary Text (Dark)
+      onSurfaceVariant: Color(0xFFB7BCC9), // Secondary Text (Dark)
+      outline: Color(0xFF262A36), // Dividers/Borders (Dark)
     ),
-    // Material 3 Expressive Typography
+    fontFamily: 'Work Sans',
     textTheme: _createExpressiveTextTheme(Brightness.dark),
     // Material 3 Expressive Shapes
     cardTheme: CardThemeData(
@@ -359,131 +373,76 @@ class ThemeProvider extends ChangeNotifier {
     ),
   );
 
-  // Material 3 Expressive Typography System
+  // Custom Typography System: Spectral (headings) + Work Sans (body)
   static TextTheme _createExpressiveTextTheme(Brightness brightness) {
-    // Base color for text based on brightness
-    final Color onSurface = brightness == Brightness.light
-        ? const Color(0xFF1D1B20)
-        : const Color(0xFFE6E0E9);
+    // Heading color: Deep Aubergine for light theme, Primary text for dark theme
+    final Color headingColor = brightness == Brightness.light
+        ? const Color(0xFF2B1E2F) // Deep Aubergine
+        : const Color(0xFFE8EAF0); // Primary Text (Dark)
 
-    final Color onSurfaceVariant = brightness == Brightness.light
-        ? const Color(0xFF49454F)
-        : const Color(0xFFCAC4D0);
+    final Color bodyColor = brightness == Brightness.light
+        ? const Color(0xFF14161A) // Primary Text (Light)
+        : const Color(0xFFE8EAF0); // Primary Text (Dark)
+
+    final Color secondaryColor = brightness == Brightness.light
+        ? const Color(0xFF3D4047) // Secondary Text (Light)
+        : const Color(0xFFB7BCC9); // Secondary Text (Dark)
 
     return TextTheme(
-      // Display styles - largest text on screen
+      // Large display text uses Spectral with Deep Aubergine (light) / Primary (dark)
       displayLarge: TextStyle(
+        fontFamily: 'Spectral',
         fontSize: 57,
         height: 1.12,
         letterSpacing: -0.25,
         fontWeight: FontWeight.w400,
-        color: onSurface,
+        color: headingColor,
       ),
-      displayMedium: TextStyle(
-        fontSize: 45,
-        height: 1.16,
-        letterSpacing: 0,
-        fontWeight: FontWeight.w400,
-        color: onSurface,
-      ),
-      displaySmall: TextStyle(
-        fontSize: 36,
-        height: 1.22,
-        letterSpacing: 0,
-        fontWeight: FontWeight.w400,
-        color: onSurface,
-      ),
-
-      // Headline styles - large text, shorter than display
       headlineLarge: TextStyle(
+        fontFamily: 'Spectral',
         fontSize: 32,
         height: 1.25,
         letterSpacing: 0,
         fontWeight: FontWeight.w400,
-        color: onSurface,
+        color: headingColor,
       ),
       headlineMedium: TextStyle(
+        fontFamily: 'Spectral',
         fontSize: 28,
         height: 1.29,
         letterSpacing: 0,
         fontWeight: FontWeight.w400,
-        color: onSurface,
+        color: headingColor,
       ),
       headlineSmall: TextStyle(
+        fontFamily: 'Spectral',
         fontSize: 24,
         height: 1.33,
         letterSpacing: 0,
         fontWeight: FontWeight.w400,
-        color: onSurface,
+        color: headingColor,
       ),
-
-      // Title styles - medium emphasis text
-      titleLarge: TextStyle(
-        fontSize: 22,
-        height: 1.27,
-        letterSpacing: 0,
-        fontWeight: FontWeight.w500,
-        color: onSurface,
-      ),
-      titleMedium: TextStyle(
-        fontSize: 16,
-        height: 1.50,
-        letterSpacing: 0.15,
-        fontWeight: FontWeight.w500,
-        color: onSurface,
-      ),
-      titleSmall: TextStyle(
-        fontSize: 14,
-        height: 1.43,
-        letterSpacing: 0.1,
-        fontWeight: FontWeight.w500,
-        color: onSurface,
-      ),
-
-      // Body styles - used for longer form writing
+      // Body text uses Work Sans with proper brand colors
       bodyLarge: TextStyle(
         fontSize: 16,
         height: 1.50,
         letterSpacing: 0.5,
         fontWeight: FontWeight.w400,
-        color: onSurface,
+        color: bodyColor,
       ),
       bodyMedium: TextStyle(
         fontSize: 14,
         height: 1.43,
         letterSpacing: 0.25,
         fontWeight: FontWeight.w400,
-        color: onSurface,
+        color: bodyColor,
       ),
       bodySmall: TextStyle(
         fontSize: 12,
         height: 1.33,
         letterSpacing: 0.4,
         fontWeight: FontWeight.w400,
-        color: onSurfaceVariant,
-      ),
-
-      // Label styles - used for labels like button text
-      labelLarge: TextStyle(
-        fontSize: 14,
-        height: 1.43,
-        letterSpacing: 0.1,
-        fontWeight: FontWeight.w500,
-        color: onSurface,
-      ),
-      labelMedium: TextStyle(
-        fontSize: 12,
-        height: 1.33,
-        letterSpacing: 0.5,
-        fontWeight: FontWeight.w500,
-        color: onSurface,
-      ),
-      labelSmall: TextStyle(
-        fontSize: 11,
-        height: 1.45,
-        letterSpacing: 0.5,
-        fontWeight: FontWeight.w500,
-        color: onSurfaceVariant,
+        color: secondaryColor,
       ),
     );
   }

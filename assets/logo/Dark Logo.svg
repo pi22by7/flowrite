@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: -.04em;
+      }
+
+      .cls-2 {
+        letter-spacing: -.09em;
+      }
+
+      .cls-3 {
+        fill: none;
+      }
+
+      .cls-4 {
+        fill: #1a7b72;
+      }
+
+      .cls-5 {
+        letter-spacing: -.09em;
+      }
+
+      .cls-6 {
+        fill: #fafbfc;
+        font-family: Spectral-Medium, Spectral;
+        font-size: 156px;
+        font-weight: 500;
+      }
+
+      .cls-7 {
+        fill: #2b1e2f;
+      }
+
+      .cls-8 {
+        letter-spacing: -.05em;
+      }
+
+      .cls-9 {
+        letter-spacing: -.06em;
+      }
+
+      .cls-10 {
+        letter-spacing: -.08em;
+      }
+
+      .cls-11 {
+        fill: #2ab3a6;
+      }
+
+      .cls-12 {
+        letter-spacing: -.08em;
+      }
+
+      .cls-13 {
+        letter-spacing: -.08em;
+      }
+    </style>
+  </defs>
+  <path class="cls-7" d="M1024,1024H0V0h1024v1024Z"/>
+  <text class="cls-6" transform="translate(347.8 557.24)"><tspan class="cls-5" x="0" y="0">F</tspan><tspan class="cls-10" x="82.88" y="0">l</tspan><tspan class="cls-12" x="116.58" y="0">o</tspan><tspan class="cls-1" x="189.23" y="0">w</tspan><tspan class="cls-9" x="299.44" y="0">r</tspan><tspan class="cls-2" x="353.66" y="0">i</tspan><tspan class="cls-13" x="389.65" y="0">t</tspan><tspan class="cls-8" x="434.05" y="0">e</tspan></text>
+  <g>
+    <path class="cls-3" d="M312.07,560.36h-136.68v-136.68h136.68v136.68Z"/>
+    <path class="cls-4" d="M312.05,522.06c-23.9-7.79-55.01-15.06-91.68-16.48-16.35-.64-31.45-.02-45.02,1.29v53.5h136.7v-38.3Z"/>
+    <path class="cls-11" d="M175.41,560.36h136.66v-62.27c-28.01,14.51-50.22,17.99-65.77,18.3-4.59.09-7.14-.12-13.15,0-24.87.49-44.63,5.23-57.74,9.31v34.66Z"/>
+  </g>
+</svg>

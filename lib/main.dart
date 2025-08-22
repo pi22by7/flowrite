@@ -38,16 +38,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-        // Show loading screen until theme preferences are loaded
+        // Just show a simple loading indicator if theme not ready (rare)
         if (!themeProvider.isInitialized) {
           return MaterialApp(
             title: 'Flowrite',
             theme: ThemeData.light(),
-            home: const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+            home: const Scaffold(body: Center(child: CircularProgressIndicator())),
           );
         }
         

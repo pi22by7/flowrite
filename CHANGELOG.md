@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.2] - 2025-08-22
+
+### ✨ Added
+
+- **Logo Integration**: Added professional Flowrite logo to README and documentation
+- **Custom App Icon**: Implemented Flowrite logomark as app launcher icon across all platforms
+
+### 🔧 Improved
+
+- **Brand Identity**: Enhanced visual branding with light/dark mode logo variants
+- **App Icon**: Replaced default Flutter icon with custom Flowrite logomark for consistent branding (all icons currently bundled, will be optimized soon. Illustrator file also included in /assets/logo)
+
 ## [3.3.1] - 2025-07-19
 
 ### ✨ Added

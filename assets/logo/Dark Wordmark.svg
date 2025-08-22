@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: -.04em;
+      }
+
+      .cls-2 {
+        letter-spacing: -.09em;
+      }
+
+      .cls-3 {
+        letter-spacing: -.09em;
+      }
+
+      .cls-4 {
+        fill: #fafbfc;
+        font-family: Spectral-Medium, Spectral;
+        font-size: 156px;
+        font-weight: 500;
+      }
+
+      .cls-5 {
+        fill: #2b1e2f;
+      }
+
+      .cls-6 {
+        letter-spacing: -.05em;
+      }
+
+      .cls-7 {
+        letter-spacing: -.06em;
+      }
+
+      .cls-8 {
+        letter-spacing: -.08em;
+      }
+
+      .cls-9 {
+        letter-spacing: -.08em;
+      }
+
+      .cls-10 {
+        letter-spacing: -.08em;
+      }
+    </style>
+  </defs>
+  <rect class="cls-5" width="1024" height="1024"/>
+  <text class="cls-4" transform="translate(256.99 557.24)"><tspan class="cls-3" x="0" y="0">F</tspan><tspan class="cls-8" x="82.88" y="0">l</tspan><tspan class="cls-9" x="116.58" y="0">o</tspan><tspan class="cls-1" x="189.23" y="0">w</tspan><tspan class="cls-7" x="299.44" y="0">r</tspan><tspan class="cls-2" x="353.66" y="0">i</tspan><tspan class="cls-10" x="389.65" y="0">t</tspan><tspan class="cls-6" x="434.05" y="0">e</tspan></text>
+</svg>

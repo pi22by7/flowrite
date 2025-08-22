@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 3.3.1+1
+version: 3.3.2+1
 
 environment:
   sdk: ^3.5.4
@@ -51,6 +51,8 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  flutter_native_splash: ^2.3.10
+  flutter_launcher_icons: ^0.14.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -70,10 +72,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Assets including .env file, screenshots, and CMU dictionary
+  # Assets including .env file, screenshots, logo, and CMU dictionary
   assets:
     - .env
     - assets/screenshots/
+    - assets/logo/
     - assets/cmudict.dict
 
   fonts:
@@ -115,6 +118,21 @@ flutter:
     - family: Fascinate
       fonts:
         - asset: assets/fonts/Fascinate-Regular.ttf
+    - family: Spectral
+      fonts:
+        - asset: assets/fonts/Spectral-Regular.ttf
+        - asset: assets/fonts/Spectral-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Spectral-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Spectral-BoldItalic.ttf
+          weight: 700
+          style: italic
+    - family: Work Sans
+      fonts:
+        - asset: assets/fonts/WorkSans-VariableFont_wght.ttf
+        - asset: assets/fonts/WorkSans-Italic-VariableFont_wght.ttf
+          style: italic
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -141,3 +159,41 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# App icon configuration
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/logo/Logomark Transparent Background.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  web:
+    generate: true
+    image_path: "assets/logo/Logomark Transparent Background.png"
+    background_color: "#hexcode"
+    theme_color: "#hexcode"
+  windows:
+    generate: true
+    image_path: "assets/logo/Logomark Transparent Background.png"
+    icon_size: 48 # min:48, max:256, default: 48
+  macos:
+    generate: true
+    image_path: "assets/logo/Logomark Transparent Background.png"
+
+# Native splash screen configuration
+flutter_native_splash:
+  color: "#FAFBFC"  # Porcelain background for light theme
+  image: "assets/logo/Light Mode Logo Transparent Background.png"  # Light logo for light theme
+  color_dark: "#0E0F12"  # Graphite background for dark theme
+  image_dark: "assets/logo/Dark Mode Logo Transparent Background.png"  # Dark logo for dark theme
+  
+  # Android 12+ adaptive splash
+  android_12:
+    image: "assets/logo/Light Mode Logo Transparent Background.png"  # For light theme
+    color: "#FAFBFC"
+    image_dark: "assets/logo/Dark Mode Logo Transparent Background.png"  # For dark theme
+    color_dark: "#0E0F12"
+    
+  # Web configuration
+  web:
+    image: "assets/logo/Light Mode Logo Transparent Background.png"
+    color: "#FAFBFC"
