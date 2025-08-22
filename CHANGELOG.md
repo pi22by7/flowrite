@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **Accessibility**: Fixed + New button text color to meet WCAG contrast standards with proper theme-consistent colors
+
 ## [3.3.2] - 2025-08-22
 
 ### ✨ Added

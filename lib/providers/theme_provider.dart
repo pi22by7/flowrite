@@ -172,7 +172,7 @@ class ThemeProvider extends ChangeNotifier {
     brightness: Brightness.light,
     colorScheme: const ColorScheme.light(
       primary: Color(0xFF1A7B72), // Flow Teal (Dark) - for light theme
-      onPrimary: Color(0xFF091313), // On Accent
+      onPrimary: Color(0xFFFAFBFC), // Porcelain - light theme consistent color
       secondary: Color(0xFF2B1E2F), // Deep Aubergine
       onSecondary: Color(0xFFFAFBFC), // Porcelain
       tertiary: Color(0xFF58465D), // Smoky Aubergine
@@ -275,7 +275,7 @@ class ThemeProvider extends ChangeNotifier {
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
       primary: Color(0xFF2AB3A6), // Flow Teal (Bright) - for dark theme
-      onPrimary: Color(0xFF0A1917), // On Accent
+      onPrimary: Color(0xFF0A1917), // Dark text on bright teal for sufficient contrast
       secondary: Color(0xFF2B1E2F), // Deep Aubergine
       onSecondary: Color(0xFFFAFBFC), // Porcelain
       tertiary: Color(0xFF58465D), // Smoky Aubergine
