@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/supabase_auth_service.dart';
-import '../services/supabase_cloud_sync_service.dart';
+import '../services/auth_service.dart';
+import '../services/cloud_sync_service.dart';
 
 class SyncProvider extends ChangeNotifier {
-  final SupabaseAuthService _auth = SupabaseAuthService();
-  final SupabaseCloudSyncService _cloudSync = SupabaseCloudSyncService();
+  final AuthService _auth = AuthService();
+  final CloudSyncService _cloudSync = CloudSyncService();
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;

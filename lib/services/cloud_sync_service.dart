@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/writing_file.dart';
 
-class SupabaseCloudSyncService {
+class CloudSyncService {
   final SupabaseClient _supabase = Supabase.instance.client;
   static const String _lastSyncKey = 'last_sync_timestamp';
   static const String _localFilesKey = 'local_files';

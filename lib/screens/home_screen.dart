@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/sync_provider.dart';
 import '../providers/theme_provider.dart';
-import '../services/supabase_cloud_sync_service.dart';
+import '../services/cloud_sync_service.dart';
 import '../widgets/file_dialog.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/sync_status.dart';
@@ -22,7 +22,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final FileService _fileService = FileService();
-  final SupabaseCloudSyncService _cloudSync = SupabaseCloudSyncService();
+  final CloudSyncService _cloudSync = CloudSyncService();
   List<WritingFile> _files = [];
   SortOrder _currentSortOrder = SortOrder.lastModified;
   StreamSubscription? _cloudSubscription;

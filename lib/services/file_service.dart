@@ -3,16 +3,16 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/writing_file.dart';
 import '../providers/sync_provider.dart';
-import '../services/supabase_cloud_sync_service.dart';
+import '../services/cloud_sync_service.dart';
 import '../services/storage_service.dart';
 
 class FileService {
-  final SupabaseCloudSyncService _cloudSync;
+  final CloudSyncService _cloudSync;
   late final StorageService _storage;
   static bool _migrationCompleted = false;
 
-  FileService({SupabaseCloudSyncService? cloudSync})
-      : _cloudSync = cloudSync ?? SupabaseCloudSyncService() {
+  FileService({CloudSyncService? cloudSync})
+      : _cloudSync = cloudSync ?? CloudSyncService() {
     _storage = StorageService.create();
   }
 

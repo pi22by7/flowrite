@@ -5,9 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../supabase_config.dart';
+import '../cloud_config.dart';
 
-class SupabaseAuthService {
+class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   User? get currentUser => _supabase.auth.currentUser;
