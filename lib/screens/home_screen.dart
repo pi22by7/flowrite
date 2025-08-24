@@ -199,26 +199,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Image.asset(
-                      Theme.of(context).brightness == Brightness.light
-                          ? 'assets/logo/Logomark Transparent Background.png'
-                          : 'assets/logo/Logomark Transparent Background.png',
-                      height: 28,
-                      fit: BoxFit.fitHeight,
+                    Baseline(
+                      baseline:
+                          24.0, // Set baseline at bottom of image (height = 28)
+                      baselineType: TextBaseline.alphabetic,
+                      child: Image.asset(
+                        Theme.of(context).brightness == Brightness.light
+                            ? 'assets/logo/Logomark Transparent Background.png'
+                            : 'assets/logo/Logomark Transparent Background.png',
+                        height: 28,
+                        fit: BoxFit.fitHeight,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Flowrite',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontFamily: 'Spectral',
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: -0.5,
-                        height: 1.0,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontFamily: 'Spectral',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.5,
+                                height: 1.0,
+                              ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 0),
                 Text(
                   _files.isEmpty
                       ? 'Start writing'
@@ -597,20 +603,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _createNewFile() async {
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => const FileDialog(
-        initialName: '',
-        title: 'New Song',
-        isRename: false,
-      ),
-    );
-
-    if (name != null && name.isNotEmpty) {
-      final file = await _fileService.createFile(name);
-      if (mounted) {
-        _openFile(file);
-      }
+    final file = await _fileService.createFile('Untitled Song');
+    if (mounted) {
+      _openFile(file);
     }
   }
 

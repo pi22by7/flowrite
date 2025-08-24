@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Added
+
+- **Autosave System**: Implemented comprehensive autosave with 3-second timer, onBlur saves, and exit saves for seamless writing experience
+- **Streamlined Song Creation**: Direct-to-editor flow - click "New" and immediately start writing without file dialog interruptions
+- **In-Editor Title Editing**: Title field now integrated directly into editor content area with visual separation from body text
+
+### 🚀 Improved
+
+- **Editor User Experience**: Completely redesigned editing workflow - title and body editing in unified interface with Spectral typography
+- **Save System**: Robust conflict resolution preventing duplicate saves, with visual feedback through smart button states
+- **Exit Flow**: Eliminated confirmation dialogs - changes auto-save seamlessly, users can delete unwanted files if needed
+- **Home Screen Layout**: Fine-tuned logo alignment with text baseline for professional visual balance
+
 ### 🔧 Fixed
 
 - **Accessibility**: Fixed + New button text color to meet WCAG contrast standards with proper theme-consistent colors
@@ -14,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **macOS Build**: Updated macOS deployment target to 10.15+ for Flutter Assemble target to resolve google_sign_in_ios plugin compatibility
 - **Production Logging**: Suppressed debug logs in release builds to prevent sensitive information exposure
 
-### 🚀 Improved
+### 🎨 Design
 
 - **Desktop Authentication**: Enhanced OAuth success pages with professional Flowrite branding, Spectral wordmark, theme responsiveness, and improved user experience
 

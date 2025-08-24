@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
@@ -21,12 +22,20 @@ class _EditorScreenState extends State<EditorScreen> {
   final RhymeService _rhymeService = RhymeService();
   final FileService _fileService = FileService();
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _titleFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
 
   List<int> _syllableCounts = [];
   int _currentLine = 0;
   bool _isSaving = false;
+  bool _hasUnsavedChanges = false;
+  bool _isAutoSaving = false;
+  String _originalTitle = '';
+  String _originalContent = '';
+  Timer? _autosaveTimer;
+  Future<void>? _currentSaveOperation;
   // String _saveStatus = '';
 
   @override
@@ -34,7 +43,30 @@ class _EditorScreenState extends State<EditorScreen> {
     super.initState();
     _loadContent();
     _controller.addListener(_onTextChanged);
+    _titleController.addListener(_onTitleChanged);
+    _focusNode.addListener(_onBodyFocusChanged);
+    _titleFocusNode.addListener(_onTitleFocusChanged);
     _initializeRhymeService();
+  }
+
+  void _onBodyFocusChanged() {
+    if (!_focusNode.hasFocus && _hasUnsavedChanges) {
+      _saveOnBlur();
+    }
+  }
+
+  void _onTitleFocusChanged() {
+    if (!_titleFocusNode.hasFocus && _hasUnsavedChanges) {
+      _saveOnBlur();
+    }
+  }
+
+  void _saveOnBlur() {
+    // Cancel any pending autosave timer since we're saving now
+    _autosaveTimer?.cancel();
+    if (_hasUnsavedChanges && _currentSaveOperation == null) {
+      _currentSaveOperation = _autoSave();
+    }
   }
 
   Future<void> _initializeRhymeService() async {
@@ -51,7 +83,24 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _loadContent() async {
     _rhymeService.reset();
     final content = await widget.file.readContent();
-    _controller.text = content;
+    
+    // Split content into title and body if it contains a separator
+    String title = widget.file.name;
+    String body = content;
+    
+    if (content.startsWith('# ')) {
+      // Look for the first line starting with '# ' as title
+      final lines = content.split('\n');
+      if (lines.isNotEmpty && lines[0].startsWith('# ')) {
+        title = lines[0].substring(2).trim(); // Remove '# ' prefix
+        body = lines.length > 1 ? lines.sublist(1).join('\n').trimLeft() : '';
+      }
+    }
+    
+    _titleController.text = title;
+    _controller.text = body;
+    _originalTitle = title;
+    _originalContent = body;
     _updateSyllableCounts();
   }
 
@@ -59,6 +108,32 @@ class _EditorScreenState extends State<EditorScreen> {
     _rhymeService.reset();
     _updateSyllableCounts();
     _updateCurrentLine();
+    _checkForChanges();
+    _startAutosaveTimer();
+  }
+
+  void _onTitleChanged() {
+    _checkForChanges();
+    _startAutosaveTimer();
+  }
+
+  void _checkForChanges() {
+    setState(() {
+      _hasUnsavedChanges = _titleController.text != _originalTitle || _controller.text != _originalContent;
+    });
+  }
+
+  void _startAutosaveTimer() {
+    _autosaveTimer?.cancel();
+    _autosaveTimer = Timer(const Duration(seconds: 3), () {
+      if (_hasUnsavedChanges && _currentSaveOperation == null) {
+        _currentSaveOperation = _autoSave();
+      }
+    });
+  }
+
+  Future<void> _autoSave() async {
+    return _performSave(showFeedback: false);
   }
 
   void _updateSyllableCounts() {
@@ -150,8 +225,18 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        // Final fallback - only save if we still have unsaved changes
+        // (onBlur should have handled most cases already)
+        if (didPop && _hasUnsavedChanges && _currentSaveOperation == null) {
+          // Quick fire-and-forget save, don't wait for it
+          _autoSave();
+        }
+      },
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
         final theme = Theme.of(context);
         final colorScheme = theme.colorScheme;
         final settings = Provider.of<SettingsProvider>(context);
@@ -203,7 +288,8 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 
@@ -225,7 +311,7 @@ class _EditorScreenState extends State<EditorScreen> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => Navigator.pop(context),
+              onTap: () => _handleBackPress(),
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 width: 44,
@@ -244,18 +330,15 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.file.name,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  'Edit Song',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -277,10 +360,12 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
               const SizedBox(width: 8),
               _buildHeaderButton(
-                icon: _isSaving ? Icons.sync_rounded : Icons.check_rounded,
-                onPressed: _isSaving ? null : _saveContent,
+                icon: (_isSaving || _isAutoSaving) ? Icons.sync_rounded : 
+                      _hasUnsavedChanges ? Icons.circle_outlined : Icons.check_rounded,
+                onPressed: (_isSaving || _isAutoSaving) ? null : _saveContent,
                 colorScheme: colorScheme,
-                isLoading: _isSaving,
+                isLoading: _isSaving || _isAutoSaving,
+                showBadge: _hasUnsavedChanges && !_isAutoSaving,
               ),
             ],
           ),
@@ -294,42 +379,60 @@ class _EditorScreenState extends State<EditorScreen> {
     required VoidCallback? onPressed,
     required ColorScheme colorScheme,
     bool isLoading = false,
+    bool showBadge = false,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: onPressed != null
-                ? colorScheme.primary.withValues(alpha: 0.1)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: onPressed != null
-                  ? colorScheme.primary.withValues(alpha: 0.2)
-                  : colorScheme.outline.withValues(alpha: 0.1),
-            ),
-          ),
-          child: isLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: colorScheme.primary,
-                  ),
-                )
-              : Icon(
-                  icon,
-                  size: 20,
+        child: Stack(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: onPressed != null
+                    ? colorScheme.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
                   color: onPressed != null
-                      ? colorScheme.primary
-                      : colorScheme.onSurface.withValues(alpha: 0.3),
+                      ? colorScheme.primary.withValues(alpha: 0.2)
+                      : colorScheme.outline.withValues(alpha: 0.1),
                 ),
+              ),
+              child: isLoading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colorScheme.primary,
+                      ),
+                    )
+                  : Icon(
+                      icon,
+                      size: 20,
+                      color: onPressed != null
+                          ? colorScheme.primary
+                          : colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
+            ),
+            if (showBadge)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: colorScheme.error,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -344,77 +447,115 @@ class _EditorScreenState extends State<EditorScreen> {
     double paddingHorizontal,
     List<Map<String, dynamic>> lineOffsets,
   ) {
+    final titleStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
+      fontFamily: 'Spectral',
+      fontWeight: FontWeight.w500,
+      color: colorScheme.onSurface,
+    ) ?? textStyle.copyWith(fontSize: 24, fontWeight: FontWeight.w500);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: SingleChildScrollView(
         controller: _scrollController,
         child: SizedBox(
           width: constraints.maxWidth,
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: textAreaWidth + paddingHorizontal,
-                child: Stack(
-                  children: [
-                    RichText(
-                      text: _buildColoredTextSpan(_controller.text, textStyle),
-                      textDirection: TextDirection.ltr,
-                      textAlign: TextAlign.left,
-                      textScaler: MediaQuery.textScalerOf(context),
-                      strutStyle: StrutStyle(
-                        fontSize: textStyle.fontSize,
-                        height: textStyle.height,
-                        forceStrutHeight: true,
-                      ),
-                    ),
-                    EditableText(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      keyboardType: TextInputType.multiline,
-                      maxLines: null,
-                      style: textStyle.copyWith(
-                        color: Colors.transparent,
-                      ),
-                      cursorColor: colorScheme.primary,
-                      backgroundCursorColor: colorScheme.surface,
-                      selectionColor:
-                          colorScheme.primary.withValues(alpha: 0.2),
-                      cursorWidth: 2.0,
-                      cursorRadius: const Radius.circular(1),
-                      selectionControls: materialTextSelectionControls,
-                      onSelectionChanged: (selection, _) {
-                        _updateCurrentLine();
-                      },
-                      strutStyle: StrutStyle(
-                        fontSize: textStyle.fontSize,
-                        height: textStyle.height,
-                      ),
-                    ),
-                  ],
+              // Title field
+              TextField(
+                controller: _titleController,
+                focusNode: _titleFocusNode,
+                style: titleStyle,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Song Title',
+                  hintStyle: titleStyle.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  isDense: true,
                 ),
+                maxLines: 1,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _focusNode.requestFocus(),
               ),
-              if (settings.showSyllables)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: _SyllableCountPainter(
-                        lineOffsets: lineOffsets,
-                        syllableCounts: _syllableCounts,
-                        currentLine: _currentLine,
-                        textStyle: TextStyle(
-                          color: colorScheme.primary.withValues(alpha: 0.7),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+              
+              // Divider
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 16),
+                height: 1,
+                color: colorScheme.outline.withValues(alpha: 0.2),
+              ),
+              
+              // Body content editor
+              Stack(
+                children: [
+                  SizedBox(
+                    width: textAreaWidth + paddingHorizontal,
+                    child: Stack(
+                      children: [
+                        RichText(
+                          text: _buildColoredTextSpan(_controller.text, textStyle),
+                          textDirection: TextDirection.ltr,
+                          textAlign: TextAlign.left,
+                          textScaler: MediaQuery.textScalerOf(context),
+                          strutStyle: StrutStyle(
+                            fontSize: textStyle.fontSize,
+                            height: textStyle.height,
+                            forceStrutHeight: true,
+                          ),
                         ),
-                        highlightColor:
-                            colorScheme.primary.withValues(alpha: 0.05),
-                        activeTextColor: colorScheme.primary,
-                        inactiveTextColor:
-                            colorScheme.onSurface.withValues(alpha: 0.3),
-                      ),
+                        EditableText(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          keyboardType: TextInputType.multiline,
+                          maxLines: null,
+                          style: textStyle.copyWith(
+                            color: Colors.transparent,
+                          ),
+                          cursorColor: colorScheme.primary,
+                          backgroundCursorColor: colorScheme.surface,
+                          selectionColor:
+                              colorScheme.primary.withValues(alpha: 0.2),
+                          cursorWidth: 2.0,
+                          cursorRadius: const Radius.circular(1),
+                          selectionControls: materialTextSelectionControls,
+                          onSelectionChanged: (selection, _) {
+                            _updateCurrentLine();
+                          },
+                          strutStyle: StrutStyle(
+                            fontSize: textStyle.fontSize,
+                            height: textStyle.height,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  if (settings.showSyllables)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _SyllableCountPainter(
+                            lineOffsets: lineOffsets,
+                            syllableCounts: _syllableCounts,
+                            currentLine: _currentLine,
+                            textStyle: TextStyle(
+                              color: colorScheme.primary.withValues(alpha: 0.7),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            highlightColor:
+                                colorScheme.primary.withValues(alpha: 0.05),
+                            activeTextColor: colorScheme.primary,
+                            inactiveTextColor:
+                                colorScheme.onSurface.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -443,24 +584,57 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  void _handleBackPress() {
+    Navigator.pop(context);
+  }
+
   Future<void> _saveContent() async {
+    // Wait for any ongoing save operation to complete first
+    if (_currentSaveOperation != null) {
+      await _currentSaveOperation;
+      return; // The ongoing operation will have saved our changes
+    }
+
+    _currentSaveOperation = _performSave(showFeedback: true);
+    await _currentSaveOperation;
+  }
+
+  Future<void> _performSave({bool showFeedback = false}) async {
     setState(() {
-      _isSaving = true;
-      // _saveStatus = 'Saving...';
+      _isSaving = showFeedback; // Only show manual save indicator for manual saves
+      if (!showFeedback) _isAutoSaving = true;
     });
 
     try {
+      final title = _titleController.text.trim();
+      final body = _controller.text;
+      
+      // Combine title and body content with markdown-style header
+      String combinedContent = body;
+      if (title.isNotEmpty) {
+        combinedContent = '# $title\n$body';
+      }
+
+      // Save the content first
       final (success, message) = await _fileService.saveFile(
         widget.file,
-        _controller.text,
+        combinedContent,
       );
 
-      // setState(() {
-      //   _saveStatus = message;
-      // });
+      // Then rename the file if title changed and save was successful
+      if (success && title != widget.file.name && title.isNotEmpty) {
+        await _fileService.renameFile(widget.file, title);
+      }
 
-      // Show snackbar with status
-      if (mounted) {
+      if (success && mounted) {
+        setState(() {
+          _originalTitle = _titleController.text;
+          _originalContent = _controller.text;
+          _hasUnsavedChanges = false;
+        });
+      }
+
+      if (showFeedback && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -472,20 +646,34 @@ class _EditorScreenState extends State<EditorScreen> {
         );
       }
     } catch (e) {
-      // setState(() {
-      //   _saveStatus = 'Error saving file';
-      // });
+      debugPrint('Save failed: $e');
+      if (showFeedback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving file: $e'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _isAutoSaving = false;
+        });
+      }
+      _currentSaveOperation = null;
     }
   }
 
   @override
   void dispose() {
+    _autosaveTimer?.cancel();
     _controller.dispose();
+    _titleController.dispose();
     _focusNode.dispose();
+    _titleFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
