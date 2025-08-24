@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Autosave System**: Implemented comprehensive autosave with 3-second timer, onBlur saves, and exit saves for seamless writing experience
 - **Streamlined Song Creation**: Direct-to-editor flow - click "New" and immediately start writing without file dialog interruptions
 - **In-Editor Title Editing**: Title field now integrated directly into editor content area with visual separation from body text
+- **Body Placeholder Text**: Added "Write your song lyrics here..." hint to guide users and prevent title/body confusion
 
 ### 🚀 Improved
 
@@ -19,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Save System**: Robust conflict resolution preventing duplicate saves, with visual feedback through smart button states
 - **Exit Flow**: Eliminated confirmation dialogs - changes auto-save seamlessly, users can delete unwanted files if needed
 - **Home Screen Layout**: Fine-tuned logo alignment with text baseline for professional visual balance
+- **Service Names**: Refactored cloud services to generic names (removed Supabase-specific references for provider flexibility)
+- **Editor Divider**: Enhanced title/body separator visibility for clearer content area distinction
 
 ### 🔧 Fixed
 

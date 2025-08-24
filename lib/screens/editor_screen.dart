@@ -83,11 +83,11 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _loadContent() async {
     _rhymeService.reset();
     final content = await widget.file.readContent();
-    
+
     // Split content into title and body if it contains a separator
     String title = widget.file.name;
     String body = content;
-    
+
     if (content.startsWith('# ')) {
       // Look for the first line starting with '# ' as title
       final lines = content.split('\n');
@@ -96,7 +96,7 @@ class _EditorScreenState extends State<EditorScreen> {
         body = lines.length > 1 ? lines.sublist(1).join('\n').trimLeft() : '';
       }
     }
-    
+
     _titleController.text = title;
     _controller.text = body;
     _originalTitle = title;
@@ -119,7 +119,8 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _checkForChanges() {
     setState(() {
-      _hasUnsavedChanges = _titleController.text != _originalTitle || _controller.text != _originalContent;
+      _hasUnsavedChanges = _titleController.text != _originalTitle ||
+          _controller.text != _originalContent;
     });
   }
 
@@ -237,57 +238,57 @@ class _EditorScreenState extends State<EditorScreen> {
       },
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-        final theme = Theme.of(context);
-        final colorScheme = theme.colorScheme;
-        final settings = Provider.of<SettingsProvider>(context);
+          final theme = Theme.of(context);
+          final colorScheme = theme.colorScheme;
+          final settings = Provider.of<SettingsProvider>(context);
 
-        final textStyle = TextStyle(
-          fontFamily: settings.fontFamily,
-          fontSize: settings.fontSize,
-          height: settings.lineHeight,
-          color: colorScheme.onSurface,
-          letterSpacing: 0.2,
-        );
+          final textStyle = TextStyle(
+            fontFamily: settings.fontFamily,
+            fontSize: settings.fontSize,
+            height: settings.lineHeight,
+            color: colorScheme.onSurface,
+            letterSpacing: 0.2,
+          );
 
-        const syllableCountsWidth = 50.0;
-        const paddingHorizontal = 16.0 * 2;
-        final textAreaWidth =
-            constraints.maxWidth - syllableCountsWidth - paddingHorizontal;
+          const syllableCountsWidth = 50.0;
+          const paddingHorizontal = 16.0 * 2;
+          final textAreaWidth =
+              constraints.maxWidth - syllableCountsWidth - paddingHorizontal;
 
-        final textPainter = TextPainter(
-          text: _buildColoredTextSpan(_controller.text, textStyle),
-          textDirection: TextDirection.ltr,
-          textAlign: TextAlign.start,
-          textScaler: MediaQuery.textScalerOf(context),
-          textHeightBehavior: const TextHeightBehavior(),
-          locale: Localizations.localeOf(context),
-          maxLines: null,
-        );
+          final textPainter = TextPainter(
+            text: _buildColoredTextSpan(_controller.text, textStyle),
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.start,
+            textScaler: MediaQuery.textScalerOf(context),
+            textHeightBehavior: const TextHeightBehavior(),
+            locale: Localizations.localeOf(context),
+            maxLines: null,
+          );
 
-        textPainter.layout(maxWidth: textAreaWidth);
-        final lineOffsets = _getLineOffsets(textPainter);
+          textPainter.layout(maxWidth: textAreaWidth);
+          final lineOffsets = _getLineOffsets(textPainter);
 
-        return Scaffold(
-          backgroundColor: colorScheme.surface,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildMinimalAppBar(colorScheme, settings),
-                Expanded(
-                  child: _buildEditor(
-                    constraints,
-                    textStyle,
-                    colorScheme,
-                    settings,
-                    textAreaWidth,
-                    paddingHorizontal,
-                    lineOffsets,
+          return Scaffold(
+            backgroundColor: colorScheme.surface,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _buildMinimalAppBar(colorScheme, settings),
+                  Expanded(
+                    child: _buildEditor(
+                      constraints,
+                      textStyle,
+                      colorScheme,
+                      settings,
+                      textAreaWidth,
+                      paddingHorizontal,
+                      lineOffsets,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
+          );
         },
       ),
     );
@@ -360,8 +361,11 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
               const SizedBox(width: 8),
               _buildHeaderButton(
-                icon: (_isSaving || _isAutoSaving) ? Icons.sync_rounded : 
-                      _hasUnsavedChanges ? Icons.circle_outlined : Icons.check_rounded,
+                icon: (_isSaving || _isAutoSaving)
+                    ? Icons.sync_rounded
+                    : _hasUnsavedChanges
+                        ? Icons.circle_outlined
+                        : Icons.check_rounded,
                 onPressed: (_isSaving || _isAutoSaving) ? null : _saveContent,
                 colorScheme: colorScheme,
                 isLoading: _isSaving || _isAutoSaving,
@@ -448,10 +452,11 @@ class _EditorScreenState extends State<EditorScreen> {
     List<Map<String, dynamic>> lineOffsets,
   ) {
     final titleStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
-      fontFamily: 'Spectral',
-      fontWeight: FontWeight.w500,
-      color: colorScheme.onSurface,
-    ) ?? textStyle.copyWith(fontSize: 24, fontWeight: FontWeight.w500);
+              fontFamily: 'Spectral',
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurface,
+            ) ??
+        textStyle.copyWith(fontSize: 24, fontWeight: FontWeight.w500);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -480,14 +485,14 @@ class _EditorScreenState extends State<EditorScreen> {
                 textInputAction: TextInputAction.next,
                 onSubmitted: (_) => _focusNode.requestFocus(),
               ),
-              
+
               // Divider
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 16),
-                height: 1,
-                color: colorScheme.outline.withValues(alpha: 0.2),
+                height: 2,
+                color: colorScheme.outline.withValues(alpha: 0.8),
               ),
-              
+
               // Body content editor
               Stack(
                 children: [
@@ -495,8 +500,24 @@ class _EditorScreenState extends State<EditorScreen> {
                     width: textAreaWidth + paddingHorizontal,
                     child: Stack(
                       children: [
+                        // Placeholder text when body is empty
+                        if (_controller.text.isEmpty)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: Padding(
+                                padding: EdgeInsets.zero,
+                                child: Text(
+                                  'Write your song lyrics here...',
+                                  style: textStyle.copyWith(
+                                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         RichText(
-                          text: _buildColoredTextSpan(_controller.text, textStyle),
+                          text: _buildColoredTextSpan(
+                              _controller.text, textStyle),
                           textDirection: TextDirection.ltr,
                           textAlign: TextAlign.left,
                           textScaler: MediaQuery.textScalerOf(context),
@@ -601,14 +622,15 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Future<void> _performSave({bool showFeedback = false}) async {
     setState(() {
-      _isSaving = showFeedback; // Only show manual save indicator for manual saves
+      _isSaving =
+          showFeedback; // Only show manual save indicator for manual saves
       if (!showFeedback) _isAutoSaving = true;
     });
 
     try {
       final title = _titleController.text.trim();
       final body = _controller.text;
-      
+
       // Combine title and body content with markdown-style header
       String combinedContent = body;
       if (title.isNotEmpty) {
