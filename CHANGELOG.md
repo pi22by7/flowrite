@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2025-08-31
+
 ### ✨ Added
 
+- **Rhyme Dictionary**: Comprehensive rhyme suggestion system powered by RhymeBrain API for professional songwriting assistance
+  - **Smart Word Selection**: Select any word or phrase to find rhymes - works seamlessly on desktop, tablet, and mobile
+  - **Perfect & Near Rhymes**: Categorized rhyme suggestions with perfect rhymes (exact matches) and near/slant rhymes for creative flexibility
+  - **Syllable Information**: Each rhyme suggestion displays syllable count for better songwriting structure
+  - **One-Tap Replacement**: Click any rhyme to instantly replace selected text in your lyrics
+  - **Material 3 Design**: Beautiful animated popup with responsive design that adapts to all screen sizes
+  - **Real-Time Updates**: Popup dynamically updates when selecting different words without needing to reopen
+  - **Visual Feedback**: Sparkle button in header highlights when text is selected, indicating rhyme feature availability
+  - **Hybrid Text System**: Maintains full rhyme coloring functionality while enabling proper text selection on all platforms
+  - **RhymeBrain Attribution**: Compliant with API terms for application usage
 - **Autosave System**: Implemented comprehensive autosave with 3-second timer, onBlur saves, and exit saves for seamless writing experience
 - **Streamlined Song Creation**: Direct-to-editor flow - click "New" and immediately start writing without file dialog interruptions
 - **In-Editor Title Editing**: Title field now integrated directly into editor content area with visual separation from body text

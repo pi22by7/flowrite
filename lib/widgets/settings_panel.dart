@@ -350,7 +350,7 @@ class SettingsPanel extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: colorScheme.primary,
+            activeThumbColor: colorScheme.primary,
             inactiveThumbColor: colorScheme.outline.withValues(alpha: 0.5),
             inactiveTrackColor: colorScheme.outline.withValues(alpha: 0.1),
           ),

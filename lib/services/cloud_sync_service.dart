@@ -3,17 +3,43 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/writing_file.dart';
+import 'auth_service.dart';
 
 class CloudSyncService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final AuthService _authService = AuthService();
   static const String _lastSyncKey = 'last_sync_timestamp';
   static const String _localFilesKey = 'local_files';
 
   String get _userId => _supabase.auth.currentUser?.id ?? '';
   bool get isSignedIn => _userId.isNotEmpty;
 
+  Future<bool> _ensureValidSession() async {
+    if (!isSignedIn) return false;
+    
+    try {
+      final isValid = await _authService.isSessionValid();
+      if (!isValid) {
+        debugPrint('Session invalid, attempting to refresh...');
+        final refreshed = await _authService.refreshSession();
+        if (!refreshed) {
+          debugPrint('Failed to refresh session');
+          return false;
+        }
+        debugPrint('Session refreshed successfully');
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error ensuring valid session: $e');
+      return false;
+    }
+  }
+
   Future<bool> get isOnline async {
     try {
+      // Ensure valid session before checking connectivity
+      if (!await _ensureValidSession()) return false;
+      
       // Simple connectivity check by making a lightweight query
       await _supabase
           .from('user_files')
@@ -33,6 +59,12 @@ class CloudSyncService {
     }
 
     try {
+      // Ensure valid session before syncing
+      if (!await _ensureValidSession()) {
+        debugPrint('Invalid session, cannot sync file ${file.id}');
+        return false;
+      }
+
       // Check online status first
       final isOnline = await this.isOnline;
       if (!isOnline) {
@@ -104,6 +136,11 @@ class CloudSyncService {
         .stream(primaryKey: ['id'])
         .eq('user_id', _userId)
         .order('last_modified', ascending: false)
+        .handleError((error) {
+          debugPrint('Stream error, attempting session refresh: $error');
+          // Try to refresh session on stream error
+          _ensureValidSession();
+        })
         .map((data) => data
             .map((item) => WritingFile(
                   id: item['id'],
@@ -121,6 +158,12 @@ class CloudSyncService {
     }
 
     try {
+      // Ensure valid session before syncing
+      if (!await _ensureValidSession()) {
+        debugPrint('Invalid session, cannot sync pending changes');
+        return;
+      }
+
       final lastSync = await _getLastSyncTime();
       final localFiles = await _getModifiedLocalFiles(lastSync);
 

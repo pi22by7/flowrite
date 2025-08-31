@@ -433,4 +433,30 @@ class AuthService {
       password: password,
     );
   }
+
+  Future<bool> refreshSession() async {
+    try {
+      final response = await _supabase.auth.refreshSession();
+      return response.session != null;
+    } catch (e) {
+      debugPrint('Error refreshing session: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isSessionValid() async {
+    try {
+      final session = _supabase.auth.currentSession;
+      if (session == null) return false;
+      
+      // Check if token is expired (with 5 minute buffer)
+      final now = DateTime.now().millisecondsSinceEpoch / 1000;
+      final expiresAt = session.expiresAt ?? 0;
+      
+      return expiresAt > now + 300; // 5 minute buffer
+    } catch (e) {
+      debugPrint('Error checking session validity: $e');
+      return false;
+    }
+  }
 }

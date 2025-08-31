@@ -7,6 +7,7 @@ import '../services/file_service.dart';
 import '../services/rhyme_service.dart';
 import '../services/syllable_service.dart';
 import '../widgets/settings_panel.dart';
+import '../widgets/rhyme_dictionary_popup.dart';
 
 class EditorScreen extends StatefulWidget {
   final WritingFile file;
@@ -37,12 +38,19 @@ class _EditorScreenState extends State<EditorScreen> {
   Timer? _autosaveTimer;
   Future<void>? _currentSaveOperation;
   // String _saveStatus = '';
+  
+  // Rhyme dictionary state
+  bool _showRhymePopup = false;
+  String _selectedText = '';
+  Offset _popupPosition = Offset.zero;
+  Timer? _selectionTimer;
 
   @override
   void initState() {
     super.initState();
     _loadContent();
     _controller.addListener(_onTextChanged);
+    _controller.addListener(_onSelectionChanged);
     _titleController.addListener(_onTitleChanged);
     _focusNode.addListener(_onBodyFocusChanged);
     _titleFocusNode.addListener(_onTitleFocusChanged);
@@ -159,6 +167,119 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  void _onSelectionChanged() {
+    _updateCurrentLine();
+    
+    // Cancel any existing timer
+    _selectionTimer?.cancel();
+    
+    // If popup is open and we have a valid selection, update it
+    if (_showRhymePopup) {
+      final selection = _controller.selection;
+      if (selection.isValid && !selection.isCollapsed) {
+        final selectedText = _controller.text.substring(selection.start, selection.end).trim();
+        if (selectedText.isNotEmpty && RegExp(r'[a-zA-Z]').hasMatch(selectedText)) {
+          debugPrint('🔄 Selection changed while popup open: "$_selectedText" -> "$selectedText"');
+          if (_selectedText != selectedText) {
+            // Update popup with new selection
+            _showRhymeDictionary(selectedText, selection);
+          }
+          return; // Don't hide the popup, just update it
+        }
+      }
+      // Hide popup if selection is invalid
+      debugPrint('❌ Invalid selection, closing popup');
+      setState(() {
+        _showRhymePopup = false;
+      });
+    }
+    
+    // Trigger rebuild to update rhyme button highlighting
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _showRhymeDictionary(String text, TextSelection selection) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.width > 600;
+    
+    // Responsive popup dimensions
+    final popupWidth = (screenSize.width * 0.9).clamp(280.0, 400.0);
+    final maxPopupHeight = screenSize.height * 0.6;
+    
+    double popupX, popupY;
+    
+    if (isTablet) {
+      // Tablet: Show to the side if possible, otherwise center
+      popupX = screenSize.width * 0.6;
+      popupY = screenSize.height * 0.2;
+      
+      // Adjust if would go off screen
+      if (popupX + popupWidth > screenSize.width - 20) {
+        popupX = (screenSize.width - popupWidth) / 2;
+      }
+    } else {
+      // Mobile: Center horizontally, position in bottom half
+      popupX = (screenSize.width - popupWidth) / 2;
+      popupY = screenSize.height * 0.4;
+    }
+    
+    // Ensure popup stays within bounds
+    popupX = popupX.clamp(10.0, screenSize.width - popupWidth - 10);
+    popupY = popupY.clamp(100.0, screenSize.height - 100.0);
+    
+    // Adjust if would exceed max height
+    if (popupY + maxPopupHeight > screenSize.height - 60) {
+      popupY = screenSize.height - maxPopupHeight - 60;
+    }
+
+    setState(() {
+      _selectedText = text;
+      _popupPosition = Offset(popupX, popupY);
+      _showRhymePopup = true;
+    });
+  }
+
+  void _onRhymeWordTap(String rhymeWord) {
+    final selection = _controller.selection;
+    if (!selection.isValid) return;
+
+    // Replace selected text with the rhyme word
+    final newText = _controller.text.replaceRange(
+      selection.start,
+      selection.end,
+      rhymeWord,
+    );
+
+    _controller.value = _controller.value.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: selection.start + rhymeWord.length,
+      ),
+    );
+
+    setState(() {
+      _showRhymePopup = false;
+    });
+  }
+
+  void _closeRhymePopup() {
+    setState(() {
+      _showRhymePopup = false;
+    });
+  }
+
+  void _showRhymePopupManually() {
+    final selection = _controller.selection;
+    if (!selection.isValid || selection.isCollapsed) return;
+
+    final selectedText = _controller.text.substring(selection.start, selection.end).trim();
+    if (selectedText.isEmpty || !RegExp(r'[a-zA-Z]').hasMatch(selectedText)) return;
+
+    _showRhymeDictionary(selectedText, selection);
+  }
+
   List<Map<String, dynamic>> _getLineOffsets(TextPainter textPainter) {
     List<Map<String, dynamic>> offsets = [];
     final lineMetrics = textPainter.computeLineMetrics();
@@ -271,20 +392,34 @@ class _EditorScreenState extends State<EditorScreen> {
           return Scaffold(
             backgroundColor: colorScheme.surface,
             body: SafeArea(
-              child: Column(
+              child: Stack(
                 children: [
-                  _buildMinimalAppBar(colorScheme, settings),
-                  Expanded(
-                    child: _buildEditor(
-                      constraints,
-                      textStyle,
-                      colorScheme,
-                      settings,
-                      textAreaWidth,
-                      paddingHorizontal,
-                      lineOffsets,
-                    ),
+                  Column(
+                    children: [
+                      _buildMinimalAppBar(colorScheme, settings),
+                      Expanded(
+                        child: _buildEditor(
+                          constraints,
+                          textStyle,
+                          colorScheme,
+                          settings,
+                          textAreaWidth,
+                          paddingHorizontal,
+                          lineOffsets,
+                        ),
+                      ),
+                    ],
                   ),
+                  
+                  // Rhyme dictionary popup overlay
+                  if (_showRhymePopup)
+                    RhymeDictionaryPopup(
+                      key: ValueKey(_selectedText), // Force rebuild when text changes
+                      selectedText: _selectedText,
+                      position: _popupPosition,
+                      onClose: _closeRhymePopup,
+                      onWordTap: _onRhymeWordTap,
+                    ),
                 ],
               ),
             ),
@@ -355,6 +490,13 @@ class _EditorScreenState extends State<EditorScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildHeaderButton(
+                icon: Icons.auto_awesome_rounded,
+                onPressed: _showRhymePopupManually,
+                colorScheme: colorScheme,
+                isHighlighted: _controller.selection.isValid && !_controller.selection.isCollapsed,
+              ),
+              const SizedBox(width: 8),
+              _buildHeaderButton(
                 icon: Icons.settings_rounded,
                 onPressed: () => _showSettings(context),
                 colorScheme: colorScheme,
@@ -384,6 +526,7 @@ class _EditorScreenState extends State<EditorScreen> {
     required ColorScheme colorScheme,
     bool isLoading = false,
     bool showBadge = false,
+    bool isHighlighted = false,
   }) {
     return Material(
       color: Colors.transparent,
@@ -396,14 +539,19 @@ class _EditorScreenState extends State<EditorScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: onPressed != null
-                    ? colorScheme.primary.withValues(alpha: 0.1)
-                    : Colors.transparent,
+                color: isHighlighted 
+                    ? colorScheme.primary.withValues(alpha: 0.2)
+                    : onPressed != null
+                        ? colorScheme.primary.withValues(alpha: 0.1)
+                        : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: onPressed != null
-                      ? colorScheme.primary.withValues(alpha: 0.2)
-                      : colorScheme.outline.withValues(alpha: 0.1),
+                  color: isHighlighted
+                      ? colorScheme.primary
+                      : onPressed != null
+                          ? colorScheme.primary.withValues(alpha: 0.2)
+                          : colorScheme.outline.withValues(alpha: 0.1),
+                  width: isHighlighted ? 2 : 1,
                 ),
               ),
               child: isLoading
@@ -500,56 +648,57 @@ class _EditorScreenState extends State<EditorScreen> {
                     width: textAreaWidth + paddingHorizontal,
                     child: Stack(
                       children: [
-                        // Placeholder text when body is empty
-                        if (_controller.text.isEmpty)
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: Padding(
-                                padding: EdgeInsets.zero,
-                                child: Text(
-                                  'Write your song lyrics here...',
-                                  style: textStyle.copyWith(
-                                    color: colorScheme.onSurface.withValues(alpha: 0.4),
-                                  ),
-                                ),
-                              ),
-                            ),
+                        // Base TextField for selection and editing
+                        TextField(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          keyboardType: TextInputType.multiline,
+                          maxLines: null,
+                          style: textStyle.copyWith(
+                            // Make text transparent when rhyme coloring is enabled
+                            color: settings.showRhymes ? Colors.transparent : textStyle.color,
                           ),
-                        RichText(
-                          text: _buildColoredTextSpan(
-                              _controller.text, textStyle),
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.left,
-                          textScaler: MediaQuery.textScalerOf(context),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'Write your song lyrics here...',
+                            hintStyle: textStyle.copyWith(
+                              color: colorScheme.onSurface.withValues(alpha: 0.4),
+                            ),
+                            contentPadding: EdgeInsets.zero,
+                            isDense: true,
+                          ),
+                          cursorColor: colorScheme.primary,
+                          selectionControls: materialTextSelectionControls,
+                          enableInteractiveSelection: true,
+                          contextMenuBuilder: (context, editableTextState) {
+                            return AdaptiveTextSelectionToolbar.editableText(
+                              editableTextState: editableTextState,
+                            );
+                          },
                           strutStyle: StrutStyle(
                             fontSize: textStyle.fontSize,
                             height: textStyle.height,
                             forceStrutHeight: true,
                           ),
                         ),
-                        EditableText(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          keyboardType: TextInputType.multiline,
-                          maxLines: null,
-                          style: textStyle.copyWith(
-                            color: Colors.transparent,
+                        
+                        // Rhyme coloring overlay (pointer events disabled)
+                        if (_controller.text.isNotEmpty && settings.showRhymes)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: RichText(
+                                text: _buildColoredTextSpan(_controller.text, textStyle),
+                                textDirection: TextDirection.ltr,
+                                textAlign: TextAlign.left,
+                                textScaler: MediaQuery.textScalerOf(context),
+                                strutStyle: StrutStyle(
+                                  fontSize: textStyle.fontSize,
+                                  height: textStyle.height,
+                                  forceStrutHeight: true,
+                                ),
+                              ),
+                            ),
                           ),
-                          cursorColor: colorScheme.primary,
-                          backgroundCursorColor: colorScheme.surface,
-                          selectionColor:
-                              colorScheme.primary.withValues(alpha: 0.2),
-                          cursorWidth: 2.0,
-                          cursorRadius: const Radius.circular(1),
-                          selectionControls: materialTextSelectionControls,
-                          onSelectionChanged: (selection, _) {
-                            _updateCurrentLine();
-                          },
-                          strutStyle: StrutStyle(
-                            fontSize: textStyle.fontSize,
-                            height: textStyle.height,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -692,6 +841,7 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void dispose() {
     _autosaveTimer?.cancel();
+    _selectionTimer?.cancel();
     _controller.dispose();
     _titleController.dispose();
     _focusNode.dispose();
