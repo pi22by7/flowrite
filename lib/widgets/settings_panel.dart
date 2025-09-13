@@ -350,9 +350,18 @@ class SettingsPanel extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: colorScheme.primary,
-            inactiveThumbColor: colorScheme.outline.withValues(alpha: 0.5),
-            inactiveTrackColor: colorScheme.outline.withValues(alpha: 0.1),
+            thumbColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return colorScheme.primary;
+              }
+              return colorScheme.outline.withValues(alpha: 0.5);
+            }),
+            trackColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return colorScheme.primary.withValues(alpha: 0.3);
+              }
+              return colorScheme.outline.withValues(alpha: 0.1);
+            }),
           ),
         ],
       ),
