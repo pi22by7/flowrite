@@ -8,22 +8,23 @@ class RhymeService {
   bool _isInitialized = false;
   
   
+  // Watercolor-style soft, pastel colors for rhyming words
   final List<Color> _predefinedColors = [
-    Colors.blue,
-    Colors.red, 
-    Colors.green,
-    Colors.purple,
-    Colors.orange,
-    Colors.teal,
-    Colors.pink,
-    Colors.indigo,
-    Colors.amber,
-    Colors.cyan,
-    Colors.deepOrange,
-    Colors.lime,
-    Colors.deepPurple,
-    Colors.brown,
-    Colors.blueGrey,
+    const Color(0xFF9BB8CD), // Soft periwinkle blue
+    const Color(0xFFE8B4B8), // Soft rose
+    const Color(0xFFA8D5BA), // Soft sage green
+    const Color(0xFFD4B5D3), // Soft lavender
+    const Color(0xFFF4C7AB), // Soft peach
+    const Color(0xFF89CFF0), // Soft baby blue
+    const Color(0xFFF4C2C2), // Soft blush pink
+    const Color(0xFFB4A7D6), // Soft periwinkle purple
+    const Color(0xFFFADDA0), // Soft cream yellow
+    const Color(0xFFB5E7E3), // Soft mint
+    const Color(0xFFFFB5A7), // Soft coral
+    const Color(0xFFD4E8C1), // Soft pistachio
+    const Color(0xFFE6BDEA), // Soft orchid
+    const Color(0xFFD7C4BB), // Soft taupe
+    const Color(0xFFC5D5E4), // Soft powder blue
   ];
   int _colorIndex = 0;
 

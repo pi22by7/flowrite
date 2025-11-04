@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/sync_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/cloud_sync_service.dart';
+import '../utils/inspiration.dart';
+import '../utils/time_formatting.dart';
 import '../widgets/file_dialog.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/sync_status.dart';
@@ -188,26 +190,36 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildMinimalAppBar(
       ThemeProvider themeProvider, ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Time-of-day greeting - soft, welcoming
+                Text(
+                  InspirationService.getGreeting(),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 0.2,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                // App name with logo - elegant and humble
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Baseline(
-                      baseline:
-                          24.0, // Set baseline at bottom of image (height = 28)
+                      baseline: 20.0,
                       baselineType: TextBaseline.alphabetic,
                       child: Image.asset(
                         Theme.of(context).brightness == Brightness.light
                             ? 'assets/logo/Logomark Transparent Background.png'
                             : 'assets/logo/Logomark Transparent Background.png',
-                        height: 28,
+                        height: 24,
                         fit: BoxFit.fitHeight,
                       ),
                     ),
@@ -215,22 +227,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       'Flowrite',
                       style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontFamily: 'Spectral',
                                 fontWeight: FontWeight.w400,
-                                letterSpacing: -0.5,
+                                letterSpacing: -0.3,
                                 height: 1.0,
                               ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 0),
+                const SizedBox(height: 2),
+                // Daily inspirational word or song count
                 Text(
                   _files.isEmpty
-                      ? 'Start writing'
+                      ? InspirationService.getDailyWord()
                       : '${_files.length} ${_files.length == 1 ? 'song' : 'songs'}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.primary.withValues(alpha: 0.7),
+                        fontStyle: _files.isEmpty ? FontStyle.italic : FontStyle.normal,
+                        letterSpacing: 0.3,
                       ),
                 ),
               ],
@@ -302,25 +317,33 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Material(
         color: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
+            // Ghost-style: nearly invisible border
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+              color: colorScheme.outline.withValues(alpha: 0.06),
+              width: 1,
             ),
+            // Subtle background
+            color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.3),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.sort_rounded,
                 size: 16,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                // Ghost-style: more subtle
+                color: colorScheme.onSurface.withValues(alpha: 0.4),
               ),
               const SizedBox(width: 8),
               Text(
                 'Sort',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
+                      // Ghost-style: more subtle
+                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                      letterSpacing: 0.3,
                     ),
               ),
             ],
@@ -342,14 +365,19 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
+            // Ghost-style: nearly invisible border
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.2),
+              color: colorScheme.outline.withValues(alpha: 0.06),
+              width: 1,
             ),
+            // Subtle background that appears on interaction
+            color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.3),
           ),
           child: Icon(
             icon,
             size: 20,
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
+            // Ghost-style: much more subtle
+            color: colorScheme.onSurface.withValues(alpha: 0.4),
           ),
         ),
       ),
@@ -358,37 +386,85 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMinimalEmptyState(ColorScheme colorScheme) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.edit_note_rounded,
-              size: 40,
-              color: colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'No songs yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Large, elegant icon with soft background
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [
+                    colorScheme.primary.withValues(alpha: 0.15),
+                    colorScheme.primary.withValues(alpha: 0.05),
+                  ],
                 ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap the + button to create your first song',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Icon(
+                Icons.edit_note_rounded,
+                size: 48,
+                color: colorScheme.primary.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 40),
+            // Beautiful, inviting headline
+            Text(
+              'Your writing room awaits',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontFamily: 'Spectral',
+                    fontWeight: FontWeight.w400,
+                    color: colorScheme.onSurface,
+                    height: 1.3,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            // Inspiring subtitle
+            Text(
+              InspirationService.getRandomPhrase(),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.6,
+                    letterSpacing: 0.2,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            // Gentle call to action
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: colorScheme.outline.withValues(alpha: 0.1),
                 ),
-          ),
-        ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.arrow_downward_rounded,
+                    size: 16,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tap Begin to start writing',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          letterSpacing: 0.3,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -409,90 +485,164 @@ class _HomeScreenState extends State<HomeScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _openFile(file),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
+            color: colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.1),
+              color: colorScheme.outline.withValues(alpha: 0.08),
+              width: 1.5,
             ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.music_note_rounded,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      file.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              Row(
+                children: [
+                  // Elegant icon with gradient background
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        colors: [
+                          colorScheme.primary.withValues(alpha: 0.12),
+                          colorScheme.primary.withValues(alpha: 0.04),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Tap to edit',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
+                    child: Icon(
+                      Icons.music_note_rounded,
+                      size: 22,
+                      color: colorScheme.primary.withValues(alpha: 0.8),
                     ),
-                  ],
-                ),
-              ),
-              PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.more_horiz_rounded,
-                  color: colorScheme.onSurface.withValues(alpha: 0.4),
-                  size: 20,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'rename',
-                    child: Row(
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.edit_outlined,
-                            size: 18, color: colorScheme.onSurface),
-                        const SizedBox(width: 12),
-                        Text('Rename',
-                            style: TextStyle(color: colorScheme.onSurface)),
+                        // Song title - larger, more prominent
+                        Text(
+                          file.name,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontFamily: 'Spectral',
+                                fontWeight: FontWeight.w500,
+                                height: 1.2,
+                                letterSpacing: -0.3,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        // Emotional metadata
+                        Text(
+                          EmotionalTimeFormat.getWrittenDescription(file.lastModified),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.primary.withValues(alpha: 0.6),
+                                letterSpacing: 0.2,
+                              ),
+                        ),
                       ],
                     ),
                   ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline,
-                            size: 18, color: colorScheme.error),
-                        const SizedBox(width: 12),
-                        Text('Delete',
-                            style: TextStyle(color: colorScheme.error)),
-                      ],
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_horiz_rounded,
+                      color: colorScheme.onSurface.withValues(alpha: 0.3),
+                      size: 22,
                     ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'rename',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined,
+                                size: 18, color: colorScheme.onSurface),
+                            const SizedBox(width: 12),
+                            Text('Rename',
+                                style: TextStyle(color: colorScheme.onSurface)),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline,
+                                size: 18, color: colorScheme.error),
+                            const SizedBox(width: 12),
+                            Text('Delete',
+                                style: TextStyle(color: colorScheme.error)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) => _handleMenuAction(value, file),
                   ),
                 ],
-                onSelected: (value) => _handleMenuAction(value, file),
+              ),
+              // Content preview - the first line or two
+              FutureBuilder<String>(
+                future: file.readContent(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                    // Extract first line or two for preview
+                    final content = snapshot.data!;
+                    final lines = content.split('\n');
+
+                    // Skip title line if it exists, get body preview
+                    String preview = '';
+                    int startLine = 0;
+
+                    // If there are multiple lines, skip the first (title) and get body
+                    if (lines.length > 1) {
+                      startLine = 1;
+                      // Get first 1-2 non-empty body lines
+                      final bodyLines = lines.skip(startLine)
+                          .where((line) => line.trim().isNotEmpty)
+                          .take(2)
+                          .toList();
+                      preview = bodyLines.join(' ');
+                    }
+
+                    if (preview.isNotEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Text(
+                          preview,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                height: 1.6,
+                                fontStyle: FontStyle.italic,
+                                letterSpacing: 0.1,
+                              ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }
+                  }
+
+                  // If no preview, show gentle prompt
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text(
+                      'Tap to begin writing...',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                            fontStyle: FontStyle.italic,
+                            letterSpacing: 0.3,
+                          ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -502,46 +652,69 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMinimalFAB(ColorScheme colorScheme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _createNewFile,
-          borderRadius: BorderRadius.circular(20),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 2500),
+      curve: Curves.easeInOutSine,
+      onEnd: () {
+        // Trigger rebuild to restart animation
+        if (mounted) {
+          setState(() {});
+        }
+      },
+      builder: (context, value, child) {
+        // Create breathing effect: 0.95 -> 1.0 -> 0.95
+        final breathingValue = 0.95 + (0.05 * ((value < 0.5 ? value * 2 : (1 - value) * 2)));
+        final glowIntensity = 0.25 + (0.15 * ((value < 0.5 ? value * 2 : (1 - value) * 2)));
+
+        return Transform.scale(
+          scale: breathingValue,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.add_rounded,
-                  color: colorScheme.onPrimary,
-                  size: 20,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'New',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: colorScheme.onPrimary,
-                        fontWeight: FontWeight.w500,
-                      ),
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.primary.withValues(alpha: glowIntensity),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _createNewFile,
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.add_rounded,
+                        color: colorScheme.onPrimary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _files.isEmpty ? 'Begin' : 'Create',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: colorScheme.onPrimary,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
+                              fontSize: 16,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

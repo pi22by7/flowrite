@@ -4,12 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppThemeMode { system, light, dark }
 
+// Time-aware color temperature modes
+enum TimeOfDay { morning, afternoon, evening, night }
+
 class ThemeProvider extends ChangeNotifier {
   static const String _themeModeKey = 'theme_mode';
   static const String _useDynamicColorsKey = 'use_dynamic_colors';
-  
+  static const String _useTimeAwareColorsKey = 'use_time_aware_colors';
+
   AppThemeMode _themeMode = AppThemeMode.system;
   bool _useDynamicColors = true;
+  bool _useTimeAwareColors = false;
   ThemeData? _dynamicLightTheme;
   ThemeData? _dynamicDarkTheme;
   bool _isInitialized = false;
@@ -20,10 +25,20 @@ class ThemeProvider extends ChangeNotifier {
 
   AppThemeMode get themeMode => _themeMode;
   bool get useDynamicColors => _useDynamicColors;
+  bool get useTimeAwareColors => _useTimeAwareColors;
   bool get isInitialized => _isInitialized;
-  
+
   // Legacy getter for compatibility
   bool get isDarkMode => _themeMode == AppThemeMode.dark;
+
+  // Get current time of day for color temperature
+  TimeOfDay get currentTimeOfDay {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return TimeOfDay.morning;
+    if (hour >= 12 && hour < 17) return TimeOfDay.afternoon;
+    if (hour >= 17 && hour < 21) return TimeOfDay.evening;
+    return TimeOfDay.night;
+  }
 
   /// Initialize theme settings from persistent storage
   Future<void> _initializeFromStorage() async {
@@ -40,7 +55,10 @@ class ThemeProvider extends ChangeNotifier {
       
       // Load dynamic colors preference
       _useDynamicColors = prefs.getBool(_useDynamicColorsKey) ?? true;
-      
+
+      // Load time-aware colors preference
+      _useTimeAwareColors = prefs.getBool(_useTimeAwareColorsKey) ?? false;
+
       // Load dynamic themes if enabled
       if (_useDynamicColors) {
         await _loadDynamicThemes();
@@ -79,6 +97,16 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
+  /// Save time-aware colors preference to persistent storage
+  Future<void> _saveTimeAwareColorsPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_useTimeAwareColorsKey, _useTimeAwareColors);
+    } catch (e) {
+      debugPrint('Failed to save time-aware colors preference: $e');
+    }
+  }
+
   void toggleTheme() {
     switch (_themeMode) {
       case AppThemeMode.system:
@@ -110,6 +138,12 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleTimeAwareColors() {
+    _useTimeAwareColors = !_useTimeAwareColors;
+    _saveTimeAwareColorsPreference(); // Persist the change
+    notifyListeners();
+  }
+
   ThemeData get currentTheme {
     return getThemeForBrightness(_getEffectiveBrightness());
   }
@@ -134,14 +168,118 @@ class ThemeProvider extends ChangeNotifier {
   }
   
   ThemeData getThemeForBrightness(Brightness brightness) {
+    ThemeData baseTheme;
+
     if (_useDynamicColors) {
       if (brightness == Brightness.dark && _dynamicDarkTheme != null) {
-        return _dynamicDarkTheme!;
+        baseTheme = _dynamicDarkTheme!;
       } else if (brightness == Brightness.light && _dynamicLightTheme != null) {
-        return _dynamicLightTheme!;
+        baseTheme = _dynamicLightTheme!;
+      } else {
+        baseTheme = brightness == Brightness.dark ? _darkTheme : _lightTheme;
+      }
+    } else {
+      baseTheme = brightness == Brightness.dark ? _darkTheme : _lightTheme;
+    }
+
+    // Apply time-aware color temperature if enabled
+    if (_useTimeAwareColors) {
+      return _applyTimeAwareColors(baseTheme, brightness);
+    }
+
+    return baseTheme;
+  }
+
+  /// Apply subtle color temperature shifts based on time of day
+  ThemeData _applyTimeAwareColors(ThemeData theme, Brightness brightness) {
+    final timeOfDay = currentTimeOfDay;
+    final colorScheme = theme.colorScheme;
+
+    // Subtle temperature shifts for different times of day
+    Color shiftedSurface;
+    Color shiftedOnSurface;
+
+    if (brightness == Brightness.light) {
+      switch (timeOfDay) {
+        case TimeOfDay.morning:
+          // Cooler, more blue-tinted (crisp morning light)
+          shiftedSurface = _shiftColorTemperature(colorScheme.surface, -0.02);
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
+        case TimeOfDay.afternoon:
+          // Neutral (default)
+          shiftedSurface = colorScheme.surface;
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
+        case TimeOfDay.evening:
+          // Warmer, golden hour glow
+          shiftedSurface = _shiftColorTemperature(colorScheme.surface, 0.03);
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
+        case TimeOfDay.night:
+          // Amber-tinted warmth (cozy evening)
+          shiftedSurface = _shiftColorTemperature(colorScheme.surface, 0.04);
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
+      }
+    } else {
+      switch (timeOfDay) {
+        case TimeOfDay.morning:
+          // Slightly cooler for morning
+          shiftedSurface = _shiftColorTemperature(colorScheme.surface, -0.01);
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
+        case TimeOfDay.afternoon:
+          // Neutral
+          shiftedSurface = colorScheme.surface;
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
+        case TimeOfDay.evening:
+          // Warmer for evening
+          shiftedSurface = _shiftColorTemperature(colorScheme.surface, 0.02);
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
+        case TimeOfDay.night:
+          // Deep warm glow for night
+          shiftedSurface = _shiftColorTemperature(colorScheme.surface, 0.03);
+          shiftedOnSurface = colorScheme.onSurface;
+          break;
       }
     }
-    return brightness == Brightness.dark ? _darkTheme : _lightTheme;
+
+    return theme.copyWith(
+      colorScheme: colorScheme.copyWith(
+        surface: shiftedSurface,
+        onSurface: shiftedOnSurface,
+      ),
+    );
+  }
+
+  /// Shift color temperature (positive = warmer/more amber, negative = cooler/more blue)
+  Color _shiftColorTemperature(Color color, double amount) {
+    // Convert to HSL-like manipulation
+    final hsl = HSLColor.fromColor(color);
+
+    // Shift hue slightly towards warm (amber) or cool (blue)
+    // Warm shift: move towards orange/amber (30-50 degrees)
+    // Cool shift: move towards blue (200-240 degrees)
+    double newHue = hsl.hue;
+
+    if (amount > 0) {
+      // Warm: shift towards amber (around 40 degrees)
+      newHue = (hsl.hue + (amount * 5)) % 360;
+    } else if (amount < 0) {
+      // Cool: shift towards blue
+      newHue = (hsl.hue - (amount.abs() * 5)) % 360;
+    }
+
+    // Also slightly adjust saturation for warmth
+    final newSaturation = (hsl.saturation + (amount * 0.05)).clamp(0.0, 1.0);
+
+    return hsl
+        .withHue(newHue)
+        .withSaturation(newSaturation)
+        .toColor();
   }
   
   Brightness _getEffectiveBrightness() {
@@ -171,15 +309,19 @@ class ThemeProvider extends ChangeNotifier {
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: const ColorScheme.light(
-      primary: Color(0xFF1A7B72), // Flow Teal (Dark) - for light theme
-      onPrimary: Color(0xFFFAFBFC), // Porcelain - light theme consistent color
-      secondary: Color(0xFF2B1E2F), // Deep Aubergine
-      onSecondary: Color(0xFFFAFBFC), // Porcelain
+      primary: Color(0xFF1A7B72), // Flow Teal (Dark) - accent color
+      onPrimary: Color(0xFFFFFDF7), // Warm white on primary
+      secondary: Color(0xFF2B1E2F), // Deep Aubergine - accent
+      onSecondary: Color(0xFFFFFDF7), // Warm white
       tertiary: Color(0xFF58465D), // Smoky Aubergine
-      surface: Color(0xFFFAFBFC), // Porcelain
-      onSurface: Color(0xFF14161A), // Primary Text
-      onSurfaceVariant: Color(0xFF3D4047), // Secondary Text
-      outline: Color(0xFFE3E6EE), // Dividers/Borders
+      surface: Color(0xFFFFFDF7), // Warm Cream (like aged paper)
+      surfaceContainerLowest: Color(0xFFFFFBF0), // Even warmer for depth
+      surfaceContainerLow: Color(0xFFFFF9F0), // Bone white
+      surfaceContainer: Color(0xFFFFF8ED), // Soft ivory
+      onSurface: Color(0xFF1C1917), // Warm dark text (not pure black)
+      onSurfaceVariant: Color(0xFF57534E), // Warm gray text
+      outline: Color(0xFFE7E5E4), // Warm outline
+      outlineVariant: Color(0xFFF5F5F4), // Subtle warm divider
     ),
     fontFamily: 'Work Sans',
     textTheme: _createExpressiveTextTheme(Brightness.light),
@@ -274,15 +416,19 @@ class ThemeProvider extends ChangeNotifier {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
-      primary: Color(0xFF2AB3A6), // Flow Teal (Bright) - for dark theme
-      onPrimary: Color(0xFF0A1917), // Dark text on bright teal for sufficient contrast
-      secondary: Color(0xFF2B1E2F), // Deep Aubergine
-      onSecondary: Color(0xFFFAFBFC), // Porcelain
+      primary: Color(0xFF2AB3A6), // Flow Teal (Bright) - accent
+      onPrimary: Color(0xFF1C1917), // Warm dark text on teal
+      secondary: Color(0xFF2B1E2F), // Deep Aubergine - accent
+      onSecondary: Color(0xFFFFFDF7), // Warm white
       tertiary: Color(0xFF58465D), // Smoky Aubergine
-      surface: Color(0xFF0E0F12), // Graphite
-      onSurface: Color(0xFFE8EAF0), // Primary Text (Dark)
-      onSurfaceVariant: Color(0xFFB7BCC9), // Secondary Text (Dark)
-      outline: Color(0xFF262A36), // Dividers/Borders (Dark)
+      surface: Color(0xFF1C1917), // Warm Charcoal (not pure black)
+      surfaceContainerLowest: Color(0xFF0C0A09), // Deepest warm black
+      surfaceContainerLow: Color(0xFF1C1917), // Warm charcoal
+      surfaceContainer: Color(0xFF292524), // Lighter warm charcoal
+      onSurface: Color(0xFFFAF8F5), // Warm white text (not pure white)
+      onSurfaceVariant: Color(0xFFD6D3D1), // Warm gray text
+      outline: Color(0xFF44403C), // Warm gray outline
+      outlineVariant: Color(0xFF292524), // Subtle warm divider
     ),
     fontFamily: 'Work Sans',
     textTheme: _createExpressiveTextTheme(Brightness.dark),
@@ -374,73 +520,74 @@ class ThemeProvider extends ChangeNotifier {
   );
 
   // Custom Typography System: Spectral (headings) + Work Sans (body)
+  // Enhanced with larger sizes and more generous line heights for serene reading
   static TextTheme _createExpressiveTextTheme(Brightness brightness) {
-    // Heading color: Deep Aubergine for light theme, Primary text for dark theme
+    // Warm, literary colors for headings and body
     final Color headingColor = brightness == Brightness.light
         ? const Color(0xFF2B1E2F) // Deep Aubergine
-        : const Color(0xFFE8EAF0); // Primary Text (Dark)
+        : const Color(0xFFFAF8F5); // Warm white
 
     final Color bodyColor = brightness == Brightness.light
-        ? const Color(0xFF14161A) // Primary Text (Light)
-        : const Color(0xFFE8EAF0); // Primary Text (Dark)
+        ? const Color(0xFF1C1917) // Warm dark text
+        : const Color(0xFFFAF8F5); // Warm white text
 
     final Color secondaryColor = brightness == Brightness.light
-        ? const Color(0xFF3D4047) // Secondary Text (Light)
-        : const Color(0xFFB7BCC9); // Secondary Text (Dark)
+        ? const Color(0xFF57534E) // Warm gray
+        : const Color(0xFFD6D3D1); // Warm light gray
 
     return TextTheme(
-      // Large display text uses Spectral with Deep Aubergine (light) / Primary (dark)
+      // Large display text uses Spectral for literary elegance
       displayLarge: TextStyle(
         fontFamily: 'Spectral',
         fontSize: 57,
-        height: 1.12,
+        height: 1.15, // Slightly more generous
         letterSpacing: -0.25,
         fontWeight: FontWeight.w400,
         color: headingColor,
       ),
       headlineLarge: TextStyle(
         fontFamily: 'Spectral',
-        fontSize: 32,
-        height: 1.25,
+        fontSize: 34, // Increased from 32
+        height: 1.3, // More generous
         letterSpacing: 0,
         fontWeight: FontWeight.w400,
         color: headingColor,
       ),
       headlineMedium: TextStyle(
         fontFamily: 'Spectral',
-        fontSize: 28,
-        height: 1.29,
+        fontSize: 30, // Increased from 28
+        height: 1.35, // More generous
         letterSpacing: 0,
         fontWeight: FontWeight.w400,
         color: headingColor,
       ),
       headlineSmall: TextStyle(
         fontFamily: 'Spectral',
-        fontSize: 24,
-        height: 1.33,
+        fontSize: 26, // Increased from 24
+        height: 1.4, // More generous
         letterSpacing: 0,
         fontWeight: FontWeight.w400,
         color: headingColor,
       ),
-      // Body text uses Work Sans with proper brand colors
+      // Body text with increased sizes and generous line heights for comfortable reading
       bodyLarge: TextStyle(
-        fontSize: 16,
-        height: 1.50,
-        letterSpacing: 0.5,
+        fontSize: 18, // Increased from 16 for better readability
+        height: 1.65, // Much more generous (from 1.5)
+        letterSpacing: 0.3, // Slightly reduced for elegance
         fontWeight: FontWeight.w400,
         color: bodyColor,
       ),
       bodyMedium: TextStyle(
-        fontSize: 14,
-        height: 1.43,
-        letterSpacing: 0.25,
+        fontSize: 16, // Increased from 14
+        height: 1.6, // More generous (from 1.43)
+        letterSpacing: 0.15, // Slightly reduced
         fontWeight: FontWeight.w400,
         color: bodyColor,
       ),
       bodySmall: TextStyle(
-        fontSize: 12,
-        height: 1.33,
-        letterSpacing: 0.4,
+        fontSize: 14, // Increased from 12
+        height: 1.5, // More generous (from 1.33)
+        letterSpacing: 0.2, // Slightly reduced
         fontWeight: FontWeight.w400,
         color: secondaryColor,
       ),

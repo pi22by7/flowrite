@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/rhyme_dictionary_service.dart';
+import '../utils/animations.dart';
 
 class RhymeDictionaryPopup extends StatefulWidget {
   final String selectedText;
@@ -33,25 +34,26 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
   @override
   void initState() {
     super.initState();
+    // Use organic motion for beautiful unfold animation
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 200),
+      duration: FlowriteDurations.emphasized,
       vsync: this,
     );
     _scaleAnimation = Tween<double>(
-      begin: 0.8,
+      begin: 0.85,
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeOutBack,
+      curve: FlowriteCurves.organicMotion,
     ));
     _opacityAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeOut,
+      curve: FlowriteCurves.gentleReveal,
     ));
-    
+
     _animationController.forward();
     _loadRhymes();
   }
@@ -179,7 +181,7 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
-                                Icons.auto_awesome_rounded,
+                                Icons.menu_book_rounded,
                                 size: 20,
                                 color: colorScheme.onPrimary,
                               ),
@@ -298,23 +300,27 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
         children: [
           if (_perfectRhymes.isNotEmpty) ...[
             _buildRhymeSection(
-              'Perfect Rhymes',
+              'True Echoes',
+              'Perfect matches that sing together',
               _perfectRhymes,
               theme,
               colorScheme,
-              Icons.star_rounded,
+              Icons.auto_awesome_rounded,
             ),
-            if (_nearRhymes.isNotEmpty) const SizedBox(height: 8),
+            if (_nearRhymes.isNotEmpty) const SizedBox(height: 12),
           ],
           if (_nearRhymes.isNotEmpty)
             _buildRhymeSection(
               widget.selectedText.split(RegExp(r'[^a-zA-Z]+')).length > 1
-                  ? 'Slant Rhymes'
-                  : 'Near Rhymes',
+                  ? 'Close Harmonies'
+                  : 'Gentle Echoes',
+              widget.selectedText.split(RegExp(r'[^a-zA-Z]+')).length > 1
+                  ? 'Words that dance around each other'
+                  : 'Near matches with subtle charm',
               _nearRhymes,
               theme,
               colorScheme,
-              Icons.star_half_rounded,
+              Icons.blur_circular_rounded,
             ),
         ],
       ),
@@ -323,6 +329,7 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
 
   Widget _buildRhymeSection(
     String title,
+    String description,
     List<RhymeResult> rhymes,
     ThemeData theme,
     ColorScheme colorScheme,
@@ -333,30 +340,72 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                icon,
-                size: 16,
-                color: colorScheme.primary,
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Spectral',
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 26),
+                child: Text(
+                  description,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        Wrap(
-          children: rhymes.map((rhyme) => _buildRhymeChip(
-            rhyme,
-            theme,
-            colorScheme,
-          )).toList(),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: rhymes.asMap().entries.map((entry) {
+              final index = entry.key;
+              final rhyme = entry.value;
+              // Stagger the animation for each chip
+              final delay = Duration(milliseconds: 50 + (index * 30));
+              return TweenAnimationBuilder<double>(
+                duration: FlowriteDurations.standard,
+                curve: FlowriteCurves.organicMotion,
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  // Delay the animation
+                  final delayedValue = (value - (delay.inMilliseconds / FlowriteDurations.standard.inMilliseconds)).clamp(0.0, 1.0);
+                  return Opacity(
+                    opacity: delayedValue,
+                    child: Transform.translate(
+                      offset: Offset(0, 10 * (1 - delayedValue)),
+                      child: child,
+                    ),
+                  );
+                },
+                child: _buildRhymeChip(rhyme, theme, colorScheme),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
@@ -367,34 +416,56 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
     ThemeData theme,
     ColorScheme colorScheme,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _onRhymeWordTap(rhyme.word),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: colorScheme.outline.withValues(alpha: 0.1),
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _onRhymeWordTap(rhyme.word),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: colorScheme.secondaryContainer.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.08),
+              width: 1.5,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  rhyme.word,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSecondaryContainer,
-                    fontWeight: FontWeight.w500,
-                  ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                rhyme.word,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
                 ),
-                if (rhyme.syllables > 0) ...[
-                  const SizedBox(width: 8),
+              ),
+              if (rhyme.syllables > 0) ...[
+                const SizedBox(width: 8),
+                // Visual syllable dots (use dots for ≤8, numbers for >8)
+                if (rhyme.syllables <= 8)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(
+                      rhyme.syllables,
+                      (index) => Padding(
+                        padding: EdgeInsets.only(
+                          left: index > 0 ? 3 : 0,
+                        ),
+                        child: Container(
+                          width: 4,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withValues(alpha: 0.5),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
@@ -404,15 +475,14 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
                     child: Text(
                       '${rhyme.syllables}',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         color: colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                ],
               ],
-            ),
+            ],
           ),
         ),
       ),

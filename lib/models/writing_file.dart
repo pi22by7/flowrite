@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
+import '../services/sync_queue_service.dart';
+import '../models/sync_operation.dart';
 
 class WritingFile {
   final String id;
@@ -7,6 +9,7 @@ class WritingFile {
   DateTime lastModified;
   String? content;
   late final StorageService _storage;
+  late final SyncQueueService _syncQueue;
 
   WritingFile({
     required this.id,
@@ -15,10 +18,12 @@ class WritingFile {
     this.content,
   }) : lastModified = lastModified ?? DateTime.now() {
     _storage = StorageService.create();
+    _syncQueue = SyncQueueService();
   }
 
   Future<void> writeContent(String newContent) async {
     try {
+      // Write to local storage first (local-first approach)
       await _storage.writeContent(id, newContent);
 
       // Update in-memory content
@@ -28,12 +33,27 @@ class WritingFile {
       // Save metadata
       await _saveMetadata();
 
-      debugPrint('Content written successfully for file $id');
-      debugPrint('Content length: ${newContent.length}');
+      // Queue for sync (non-blocking)
+      _queueSync(SyncOperationType.update);
+
+      debugPrint('✅ Content written successfully for file $id');
+      debugPrint('   Content length: ${newContent.length}');
     } catch (e) {
-      debugPrint('Error writing file: $e');
+      debugPrint('❌ Error writing file: $e');
       rethrow;
     }
+  }
+
+  /// Queue file for cloud sync (non-blocking)
+  void _queueSync(SyncOperationType type) {
+    // Fire and forget - don't block on sync
+    _syncQueue.enqueue(id, type, metadata: {
+      'name': name,
+      'lastModified': lastModified.toIso8601String(),
+    }).catchError((error) {
+      debugPrint('⚠️ Error queuing sync: $error');
+      // Don't fail the write operation if queue fails
+    });
   }
 
   Future<String> readContent() async {
@@ -76,9 +96,15 @@ class WritingFile {
 
   Future<void> delete() async {
     try {
+      // Delete from local storage
       await _storage.deleteContent(id);
+
+      // Queue for cloud deletion
+      _queueSync(SyncOperationType.delete);
+
+      debugPrint('✅ File deleted: $id');
     } catch (e) {
-      debugPrint('Error deleting file: $e');
+      debugPrint('❌ Error deleting file: $e');
     }
   }
 

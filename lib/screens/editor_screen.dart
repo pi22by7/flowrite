@@ -2,10 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
+import '../models/sync_operation.dart';
 import '../providers/settings_provider.dart';
+import '../providers/sync_provider.dart';
 import '../services/file_service.dart';
 import '../services/rhyme_service.dart';
 import '../services/syllable_service.dart';
+import '../widgets/ambient_background.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/rhyme_dictionary_popup.dart';
 
@@ -18,7 +21,7 @@ class EditorScreen extends StatefulWidget {
   State<EditorScreen> createState() => _EditorScreenState();
 }
 
-class _EditorScreenState extends State<EditorScreen> {
+class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderStateMixin {
   final SyllableService _syllableService = SyllableService();
   final RhymeService _rhymeService = RhymeService();
   final FileService _fileService = FileService();
@@ -38,16 +41,33 @@ class _EditorScreenState extends State<EditorScreen> {
   Timer? _autosaveTimer;
   Future<void>? _currentSaveOperation;
   // String _saveStatus = '';
-  
+
   // Rhyme dictionary state
   bool _showRhymePopup = false;
   String _selectedText = '';
   Offset _popupPosition = Offset.zero;
   Timer? _selectionTimer;
 
+  // Shimmer animation for selected word
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize shimmer animation for selected word
+    _shimmerController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat();
+    _shimmerAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _shimmerController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
     _loadContent();
     _controller.addListener(_onTextChanged);
     _controller.addListener(_onSelectionChanged);
@@ -315,9 +335,10 @@ class _EditorScreenState extends State<EditorScreen> {
   List<TextSpan> _colorWordsInLine(String line, TextStyle baseStyle) {
     final List<TextSpan> spans = [];
     final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    // If rhyme coloring is disabled, return the whole line as one span
-    if (!settings.showRhymes) {
+    // If rhyme coloring is disabled or focus mode is on, return the whole line as one span
+    if (!settings.showRhymes || settings.focusMode) {
       return [TextSpan(text: line, style: baseStyle)];
     }
 
@@ -335,10 +356,30 @@ class _EditorScreenState extends State<EditorScreen> {
         final color = letters.isEmpty
             ? baseStyle.color!
             : _rhymeService.getRhymeColor(letters);
-        spans.add(TextSpan(
-          text: word,
-          style: baseStyle.copyWith(color: color),
-        ));
+
+        // Check if this word matches the selected text for shimmer effect
+        final isSelectedWord = _showRhymePopup &&
+            _selectedText.isNotEmpty &&
+            letters == _selectedText.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z]'), '');
+
+        // Apply shimmer effect to selected word
+        if (isSelectedWord) {
+          final shimmerValue = _shimmerAnimation.value;
+          // Create a gentle shimmer that oscillates the alpha
+          final shimmerAlpha = 0.15 + (0.15 * ((shimmerValue < 0.5 ? shimmerValue * 2 : (1 - shimmerValue) * 2)));
+          spans.add(TextSpan(
+            text: word,
+            style: baseStyle.copyWith(
+              color: color,
+              backgroundColor: colorScheme.primary.withValues(alpha: shimmerAlpha),
+            ),
+          ));
+        } else {
+          spans.add(TextSpan(
+            text: word,
+            style: baseStyle.copyWith(color: color),
+          ));
+        }
       }
     }
 
@@ -390,36 +431,65 @@ class _EditorScreenState extends State<EditorScreen> {
           final lineOffsets = _getLineOffsets(textPainter);
 
           return Scaffold(
-            backgroundColor: colorScheme.surface,
-            body: SafeArea(
+            backgroundColor: Colors.transparent,
+            body: AmbientBackground(
+              baseColor: colorScheme.surface,
+              showTexture: false, // Disabled texture for cleaner look
+              textureType: TextureType.paper,
+              showGradient: false, // Disabled gradient for cleaner look
               child: Stack(
                 children: [
-                  Column(
-                    children: [
-                      _buildMinimalAppBar(colorScheme, settings),
-                      Expanded(
-                        child: _buildEditor(
-                          constraints,
-                          textStyle,
-                          colorScheme,
-                          settings,
-                          textAreaWidth,
-                          paddingHorizontal,
-                          lineOffsets,
+                  // Very subtle vignette for gentle focus
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          center: Alignment.center,
+                          radius: 1.5,
+                          colors: [
+                            Colors.transparent,
+                            Colors.transparent,
+                            colorScheme.surface.withValues(alpha: 0.1),
+                          ],
+                          stops: const [0.0, 0.8, 1.0],
                         ),
                       ),
-                    ],
-                  ),
-                  
-                  // Rhyme dictionary popup overlay
-                  if (_showRhymePopup)
-                    RhymeDictionaryPopup(
-                      key: ValueKey(_selectedText), // Force rebuild when text changes
-                      selectedText: _selectedText,
-                      position: _popupPosition,
-                      onClose: _closeRhymePopup,
-                      onWordTap: _onRhymeWordTap,
                     ),
+                  ),
+
+                  // Main content
+                  SafeArea(
+                    child: Stack(
+                      children: [
+                        Column(
+                          children: [
+                            _buildMinimalAppBar(colorScheme, settings),
+                            Expanded(
+                              child: _buildEditor(
+                                constraints,
+                                textStyle,
+                                colorScheme,
+                                settings,
+                                textAreaWidth,
+                                paddingHorizontal,
+                                lineOffsets,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Rhyme dictionary popup overlay
+                        if (_showRhymePopup)
+                          RhymeDictionaryPopup(
+                            key: ValueKey(_selectedText), // Force rebuild when text changes
+                            selectedText: _selectedText,
+                            position: _popupPosition,
+                            onClose: _closeRhymePopup,
+                            onWordTap: _onRhymeWordTap,
+                          ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -432,15 +502,11 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _buildMinimalAppBar(
       ColorScheme colorScheme, SettingsProvider settings) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
+        // Ghost-like: nearly transparent
+        color: colorScheme.surface.withValues(alpha: 0.7),
+        // Remove bottom border for cleaner look
       ),
       child: Row(
         children: [
@@ -454,14 +520,17 @@ class _EditorScreenState extends State<EditorScreen> {
                 height: 44,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
+                  // Ghost-style: nearly invisible
                   border: Border.all(
-                    color: colorScheme.outline.withValues(alpha: 0.2),
+                    color: colorScheme.outline.withValues(alpha: 0.06),
                   ),
+                  color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.3),
                 ),
                 child: Icon(
                   Icons.arrow_back_rounded,
                   size: 20,
-                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                  // Ghost-style: more subtle
+                  color: colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -477,11 +546,37 @@ class _EditorScreenState extends State<EditorScreen> {
                       ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                Consumer<SyncProvider>(
+                  builder: (context, syncProvider, child) {
+                    String statusText = '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}';
+
+                    // Add sync status if signed in
+                    if (syncProvider.isSignedIn) {
+                      switch (syncProvider.syncStatus) {
+                        case SyncStatus.syncing:
+                          statusText += ' • Syncing...';
+                          break;
+                        case SyncStatus.pending:
+                          statusText += ' • Pending sync';
+                          break;
+                        case SyncStatus.error:
+                          statusText += ' • Sync error';
+                          break;
+                        case SyncStatus.synced:
+                          statusText += ' • Synced';
+                          break;
+                        default:
+                          break;
+                      }
+                    }
+
+                    return Text(
+                      statusText,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -608,13 +703,18 @@ class _EditorScreenState extends State<EditorScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        child: SizedBox(
-          width: constraints.maxWidth,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      child: Center(
+        // Center the content horizontally
+        child: Container(
+          // Max width for centered composition (journal-like)
+          constraints: BoxConstraints(
+            maxWidth: constraints.maxWidth > 800 ? 700 : constraints.maxWidth,
+          ),
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // Title field
               TextField(
                 controller: _titleController,
@@ -634,11 +734,49 @@ class _EditorScreenState extends State<EditorScreen> {
                 onSubmitted: (_) => _focusNode.requestFocus(),
               ),
 
-              // Divider
+              // Ornamental divider - poetic and elegant
               Container(
-                margin: const EdgeInsets.symmetric(vertical: 16),
-                height: 2,
-                color: colorScheme.outline.withValues(alpha: 0.8),
+                margin: const EdgeInsets.symmetric(vertical: 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              colorScheme.outline.withValues(alpha: 0.2),
+                              colorScheme.primary.withValues(alpha: 0.3),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(
+                        Icons.fiber_manual_record,
+                        size: 4,
+                        color: colorScheme.primary.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primary.withValues(alpha: 0.3),
+                              colorScheme.outline.withValues(alpha: 0.2),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // Body content editor
@@ -655,8 +793,8 @@ class _EditorScreenState extends State<EditorScreen> {
                           keyboardType: TextInputType.multiline,
                           maxLines: null,
                           style: textStyle.copyWith(
-                            // Make text transparent when rhyme coloring is enabled
-                            color: settings.showRhymes ? Colors.transparent : textStyle.color,
+                            // Make text transparent only when rhyme coloring is visible (not in focus mode)
+                            color: (settings.showRhymes && !settings.focusMode) ? Colors.transparent : textStyle.color,
                           ),
                           decoration: InputDecoration(
                             border: InputBorder.none,
@@ -683,26 +821,31 @@ class _EditorScreenState extends State<EditorScreen> {
                         ),
                         
                         // Rhyme coloring overlay (pointer events disabled)
-                        if (_controller.text.isNotEmpty && settings.showRhymes)
+                        if (_controller.text.isNotEmpty && settings.showRhymes && !settings.focusMode)
                           Positioned.fill(
                             child: IgnorePointer(
-                              child: RichText(
-                                text: _buildColoredTextSpan(_controller.text, textStyle),
-                                textDirection: TextDirection.ltr,
-                                textAlign: TextAlign.left,
-                                textScaler: MediaQuery.textScalerOf(context),
-                                strutStyle: StrutStyle(
-                                  fontSize: textStyle.fontSize,
-                                  height: textStyle.height,
-                                  forceStrutHeight: true,
-                                ),
+                              child: AnimatedBuilder(
+                                animation: _shimmerAnimation,
+                                builder: (context, child) {
+                                  return RichText(
+                                    text: _buildColoredTextSpan(_controller.text, textStyle),
+                                    textDirection: TextDirection.ltr,
+                                    textAlign: TextAlign.left,
+                                    textScaler: MediaQuery.textScalerOf(context),
+                                    strutStyle: StrutStyle(
+                                      fontSize: textStyle.fontSize,
+                                      height: textStyle.height,
+                                      forceStrutHeight: true,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ),
                       ],
                     ),
                   ),
-                  if (settings.showSyllables)
+                  if (settings.showSyllables && !settings.focusMode)
                     Positioned.fill(
                       child: IgnorePointer(
                         child: CustomPaint(
@@ -730,6 +873,7 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -806,13 +950,38 @@ class _EditorScreenState extends State<EditorScreen> {
       }
 
       if (showFeedback && mounted) {
+        final colorScheme = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message),
+            content: Row(
+              children: [
+                if (success) ...[
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: colorScheme.onPrimary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Text(
+                    success ? 'Words saved ✨' : message,
+                    style: TextStyle(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             duration: const Duration(seconds: 2),
             backgroundColor: success
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.error,
+                ? colorScheme.primary
+                : colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -842,6 +1011,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void dispose() {
     _autosaveTimer?.cancel();
     _selectionTimer?.cancel();
+    _shimmerController.dispose();
     _controller.dispose();
     _titleController.dispose();
     _focusNode.dispose();
@@ -872,43 +1042,86 @@ class _SyllableCountPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = highlightColor;
-
     for (int i = 0; i < lineOffsets.length && i < syllableCounts.length; i++) {
       final lineInfo = lineOffsets[i];
       final offsetY = lineInfo['offset'] as double;
       final height = lineInfo['height'] as double;
 
-      // Draw highlight for current line
+      // Draw subtle glow for current line (not a solid block)
       if (i == currentLine) {
-        final highlightRect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, offsetY, size.width, height),
-          const Radius.circular(8),
+        // Create a soft glow effect with gradient
+        final glowRect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(-10, offsetY - 2, size.width + 20, height + 4),
+          const Radius.circular(12),
         );
-        canvas.drawRRect(highlightRect, paint);
+
+        final glowPaint = Paint()
+          ..shader = RadialGradient(
+            center: Alignment.centerLeft,
+            radius: 1.5,
+            colors: [
+              highlightColor.withValues(alpha: 0.15),
+              highlightColor.withValues(alpha: 0.05),
+              Colors.transparent,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ).createShader(glowRect.outerRect);
+
+        canvas.drawRRect(glowRect, glowPaint);
       }
 
-      final textSpan = TextSpan(
-        text: '${syllableCounts[i]}',
-        style: textStyle.copyWith(
-          color: i == currentLine ? activeTextColor : inactiveTextColor,
-          fontWeight: i == currentLine ? FontWeight.bold : FontWeight.normal,
-        ),
-      );
+      // Draw visual dots for syllable count
+      final syllableCount = syllableCounts[i];
+      final isActive = i == currentLine;
+      final dotColor = isActive ? activeTextColor : inactiveTextColor;
 
-      final textPainter = TextPainter(
-        text: textSpan,
-        textDirection: TextDirection.ltr,
-      );
+      // Use dots for counts up to 12, otherwise show number
+      if (syllableCount <= 12) {
+        final dotSize = 4.0;
+        final dotSpacing = 6.0;
+        final totalWidth = (syllableCount * dotSize) + ((syllableCount - 1) * (dotSpacing - dotSize));
 
-      textPainter.layout(minWidth: 0, maxWidth: 50);
+        final startX = size.width - totalWidth - 24;
+        final centerY = offsetY + (height / 2);
 
-      final position = Offset(
-        size.width - textPainter.width - 24,
-        offsetY + (height - textPainter.height) / 2,
-      );
+        final dotPaint = Paint()
+          ..color = dotColor
+          ..style = PaintingStyle.fill;
 
-      textPainter.paint(canvas, position);
+        // Draw dots
+        for (int j = 0; j < syllableCount; j++) {
+          final dotX = startX + (j * dotSpacing);
+          canvas.drawCircle(
+            Offset(dotX, centerY),
+            isActive ? dotSize / 2 : dotSize / 2.5,
+            dotPaint,
+          );
+        }
+      } else {
+        // For longer lines, show number instead
+        final textSpan = TextSpan(
+          text: '$syllableCount',
+          style: textStyle.copyWith(
+            color: dotColor,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            fontSize: 11,
+          ),
+        );
+
+        final textPainter = TextPainter(
+          text: textSpan,
+          textDirection: TextDirection.ltr,
+        );
+
+        textPainter.layout(minWidth: 0, maxWidth: 50);
+
+        final position = Offset(
+          size.width - textPainter.width - 24,
+          offsetY + (height - textPainter.height) / 2,
+        );
+
+        textPainter.paint(canvas, position);
+      }
     }
   }
 

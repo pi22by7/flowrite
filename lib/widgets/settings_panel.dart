@@ -17,28 +17,84 @@ class SettingsPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Clean header
+          // Atmospheric header
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-            child: Text(
-              'Editor Settings',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w500,
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.palette_outlined,
+                      size: 24,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Your Atmosphere',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Spectral',
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 36),
+                  child: Text(
+                    'Shape your creative sanctuary',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          fontStyle: FontStyle.italic,
+                        ),
                   ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Ambiance Section
+          _buildAmbianceSection(context, settings, colorScheme),
+
+          // Typography group header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.text_fields_rounded,
+                  size: 20,
+                  color: colorScheme.primary.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Typography',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                      ),
+                ),
+              ],
             ),
           ),
 
           // Font Family Section
           _buildMinimalSection(
             context,
-            title: 'Font Family',
+            title: 'Voice & Character',
+            description: 'Choose the personality of your words',
             child: _buildFontSelector(settings, colorScheme),
           ),
 
           // Font Size Section
           _buildMinimalSection(
             context,
-            title: 'Font Size',
+            title: 'Text Scale',
+            description: 'Find your comfortable reading size',
             child: _buildSlider(
               value: settings.fontSize,
               min: 14,
@@ -54,7 +110,8 @@ class SettingsPanel extends StatelessWidget {
           // Line Height Section
           _buildMinimalSection(
             context,
-            title: 'Line Height',
+            title: 'Breathing Room',
+            description: 'Space between lines for clarity',
             child: _buildSlider(
               value: settings.lineHeight,
               min: 1.0,
@@ -70,15 +127,28 @@ class SettingsPanel extends StatelessWidget {
           // Preview Section
           _buildMinimalSection(
             context,
-            title: 'Preview',
+            title: 'How It Feels',
+            icon: Icons.visibility_outlined,
+            description: 'See your choices come to life',
             child: _buildPreview(settings, colorScheme),
           ),
 
           // Features Section
           _buildMinimalSection(
             context,
-            title: 'Features',
+            title: 'Writing Tools',
+            icon: Icons.tune_rounded,
+            description: 'Helpers for your creative flow',
             child: _buildFeatures(settings, colorScheme),
+          ),
+
+          // Focus Mode Section
+          _buildMinimalSection(
+            context,
+            title: 'Pure Focus',
+            icon: Icons.center_focus_strong_rounded,
+            description: 'Hide all distractions, just you and your words',
+            child: _buildFocusMode(settings, colorScheme),
           ),
 
           const SizedBox(height: 24),
@@ -91,18 +161,53 @@ class SettingsPanel extends StatelessWidget {
     BuildContext context, {
     required String title,
     required Widget child,
+    IconData? icon,
+    String? description,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
+          if (icon != null)
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: colorScheme.primary.withValues(alpha: 0.8),
                 ),
-          ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            )
+          else
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          if (description != null) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: EdgeInsets.only(left: icon != null ? 26 : 0),
+              child: Text(
+                description,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
+                      fontSize: 12,
+                    ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           child,
         ],
@@ -113,7 +218,7 @@ class SettingsPanel extends StatelessWidget {
   Widget _buildFontSelector(
       SettingsProvider settings, ColorScheme colorScheme) {
     return SizedBox(
-      height: 44,
+      height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: settings.availableFonts.length,
@@ -121,36 +226,91 @@ class SettingsPanel extends StatelessWidget {
         itemBuilder: (context, index) {
           final font = settings.availableFonts[index];
           final isSelected = font == settings.fontFamily;
+          final personality = settings.fontPersonalities[font] ?? '';
 
           return Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () => settings.setFontFamily(font),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                width: 140,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? colorScheme.primary.withValues(alpha: 0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                      ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+                      : colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
-                        ? colorScheme.primary.withValues(alpha: 0.3)
-                        : colorScheme.outline.withValues(alpha: 0.2),
+                        ? colorScheme.primary.withValues(alpha: 0.4)
+                        : colorScheme.outline.withValues(alpha: 0.1),
+                    width: isSelected ? 2 : 1,
                   ),
                 ),
-                child: Text(
-                  font,
-                  style: TextStyle(
-                    fontFamily: font,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Font personality label
+                    if (personality.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colorScheme.primary.withValues(alpha: 0.15)
+                              : colorScheme.outline.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          personality,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.onSurface.withValues(alpha: 0.5),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      )
+                    else
+                      const SizedBox(height: 18),
+
+                    const SizedBox(height: 8),
+
+                    // Font preview
+                    Text(
+                      'Words flow',
+                      style: TextStyle(
+                        fontFamily: font,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isSelected
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurface.withValues(alpha: 0.8),
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    // Font name
+                    Text(
+                      font,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -275,15 +435,6 @@ class SettingsPanel extends StatelessWidget {
         return Column(
           children: [
             _buildMinimalSwitch(
-              title: 'Dynamic Colors',
-              subtitle:
-                  'Use Material You colors from your wallpaper (Android 12+)',
-              value: themeProvider.useDynamicColors,
-              onChanged: (value) => themeProvider.toggleDynamicColors(),
-              colorScheme: colorScheme,
-            ),
-            const SizedBox(height: 12),
-            _buildMinimalSwitch(
               title: 'Show Syllable Count',
               subtitle: 'Display syllable counts for each line',
               value: settings.showSyllables,
@@ -365,6 +516,140 @@ class SettingsPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAmbianceSection(
+    BuildContext context,
+    SettingsProvider settings,
+    ColorScheme colorScheme,
+  ) {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.wb_twilight_rounded,
+                    size: 20,
+                    color: colorScheme.primary.withValues(alpha: 0.7),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Ambiance',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Theme mode
+            _buildMinimalSection(
+              context,
+              title: 'Visual Theme',
+              description: 'Choose light, dark, or follow the time of day',
+              child: _buildThemeSelector(themeProvider, colorScheme),
+            ),
+
+            // Dynamic colors toggle
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: _buildMinimalSwitch(
+                title: 'Material You Colors',
+                subtitle: 'Adapt to your device wallpaper (Android 12+)',
+                value: themeProvider.useDynamicColors,
+                onChanged: (value) => themeProvider.toggleDynamicColors(),
+                colorScheme: colorScheme,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeSelector(
+    ThemeProvider themeProvider,
+    ColorScheme colorScheme,
+  ) {
+    final themeOptions = [
+      {'value': AppThemeMode.light, 'label': 'Light', 'icon': Icons.wb_sunny_rounded},
+      {'value': AppThemeMode.dark, 'label': 'Dark', 'icon': Icons.nights_stay_rounded},
+      {'value': AppThemeMode.system, 'label': 'System', 'icon': Icons.brightness_auto_rounded},
+    ];
+
+    return Row(
+      children: themeOptions.map((option) {
+        final isSelected = themeProvider.themeMode == option['value'];
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => themeProvider.setThemeMode(option['value'] as AppThemeMode),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? colorScheme.primary.withValues(alpha: 0.5)
+                          : colorScheme.outline.withValues(alpha: 0.1),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        option['icon'] as IconData,
+                        size: 24,
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        option['label'] as String,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildFocusMode(SettingsProvider settings, ColorScheme colorScheme) {
+    return _buildMinimalSwitch(
+      title: 'Focus Mode',
+      subtitle: 'Hides syllable counts, rhyme colors, and all UI distractions',
+      value: settings.focusMode,
+      onChanged: (value) => settings.setFocusMode(value),
+      colorScheme: colorScheme,
     );
   }
 }

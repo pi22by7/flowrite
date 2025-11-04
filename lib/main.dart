@@ -1,4 +1,5 @@
 import 'package:flowrite/providers/settings_provider.dart';
+import 'package:flowrite/utils/animations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -61,7 +62,11 @@ class MyApp extends StatelessWidget {
           themeMode: themeProvider.materialThemeMode,
           theme: themeProvider.lightTheme,
           darkTheme: themeProvider.darkTheme,
-          home: const HomeScreen(),
+          home: FlowriteAnimations.fadeIn(
+            duration: FlowriteDurations.standard,
+            curve: FlowriteCurves.gentleReveal,
+            child: const HomeScreen(),
+          ),
         );
       },
     );
