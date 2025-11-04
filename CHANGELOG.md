@@ -9,95 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
-- **Enterprise-Grade Sync Resilience**: Comprehensive offline-first sync system with zero data loss guarantee
-  - **Persistent Sync Queue**: All operations automatically queued and survive app crashes/restarts
-  - **Exponential Backoff Retry**: Smart retry logic (1s → 2s → 4s → 8s → ... → 1 hour) with max 10 attempts
-  - **Transaction Log**: Complete audit trail of all file changes with timestamps and metadata
-  - **Automatic Conflict Resolution**: Detects and resolves conflicts when same file edited on multiple devices
-  - **Smart Merge Algorithm**: For poems/lyrics, intelligently prefers longer version (assumes content addition)
-  - **Conflict Strategies**: newerWins (default), localWins, remoteWins with automatic backup creation
-  - **Non-Blocking Operations**: All file writes complete immediately to local storage, sync happens in background
-  - **Real-Time Status**: Sync status indicators show: idle, syncing, synced, error, pending states
-  - **Local-First Architecture**: App remains fully functional offline, syncs when connection restored
+- **Bulletproof Sync System**: Your work is never lost - writes save locally instantly, sync happens in background
+  - Works perfectly offline, automatically syncs when connection restored
+  - Smart retry with exponential backoff (automatically retries failed syncs)
+  - Automatic conflict resolution when editing on multiple devices
+  - Real-time sync status in editor ("Syncing...", "Synced", "Pending")
 
-### 🎨 Complete UI/UX Transformation
+- **Serene Writing Experience**: Complete redesign focused on calm, creativity, and inspiration
+  - Warm color palette (cream and charcoal) replacing stark white/black
+  - Time-of-day greetings and daily inspirational words
+  - Centered composition (700px max-width) for focused writing
+  - Breathing FAB button with gentle pulsing animation
+  - "Your Atmosphere" settings panel with poetic language
 
-- **Phase 1 - Foundation**: Warm, organic atmosphere with time-aware colors
-  - **Enhanced Theme System**: Warm cream (#FFFDF7) and charcoal (#1C1917) replacing stark white/black
-  - **Time-Aware Colors**: Subtle color temperature shifts based on time of day (morning, afternoon, evening, night)
-  - **Refined Typography**: Larger sizes (34pt headlines, 18pt body) with generous 1.65 line height
-  - **Custom Motion System**: Organic easing curves (easeOutExpo, easeInOutQuart) with breathing animations
-  - **Subtle Textures**: Paper and linen texture overlays for warmth
-  - **Ambient Backgrounds**: Gentle gradient system with serene atmosphere
-  - **Gentle Launch**: Smooth fade-in animation on app start
-  - **Font Personalities**: Descriptive labels for fonts (Modern, Focused, Elegant, Poetic, etc.)
+- **Visual Syllable Counter**: Beautiful dot patterns showing syllable counts at a glance
+  - Unique shapes for 1-12 syllables (dot, vertical dots, triangle, square, pentagon, hexagon, etc.)
+  - All patterns made from dots for consistency
+  - Fixed position that won't collide with text
+  - Works perfectly with wrapped lines
 
-- **Phase 2 - Home Screen Sanctuary**
-  - **Time-of-Day Greetings**: Warm welcome messages (Good morning, afternoon, evening, night)
-  - **Daily Inspiration**: Rotating inspirational words (Breathe, Flow, Create, Wonder, Dream...)
-  - **Enhanced Empty State**: Beautiful invitation with poetic language instead of generic prompts
-  - **Breathing FAB**: Pulsing glow animation with subtle scale changes for organic feel
-  - **Rich Song Cards**: Content previews, emotional timestamps, word counts
-  - **Ghost-Style Controls**: Nearly invisible UI (0.06 alpha borders, 0.4 alpha icons) for minimal distraction
-  - **Organic Card Layout**: Staggered animations with parallax-like effects
+- **Enhanced Rhyme Features**:
+  - Watercolor pastel colors for rhyme highlighting (15 soft colors)
+  - Selected word shimmer effect
+  - Poetic category names: "True Echoes" (perfect), "Gentle Echoes" (near), "Close Harmonies" (slant)
+  - Book icon replacing sparkles for rhyme dictionary
 
-- **Phase 3 - Editor as Sacred Space**
-  - **Centered Composition**: 700px max-width journal-like constraint for focus
-  - **Clean Background**: Subtle vignette without distracting textures (user feedback)
-  - **Minimal Chrome**: Fading UI elements that disappear when not needed
-  - **Current Line Glow**: Soft radial gradient highlighting active line
-  - **Visual Syllable Counter**: Dots for ≤12 syllables, numbers for longer lines
-  - **Watercolor Rhyme Colors**: 15 soft pastel colors replacing bold primary colors
-  - **Focus Mode**: Hide all distractions - just you and your words (fixed text visibility bug)
-
-- **Phase 4 - Rhyme Dictionary Magic**
-  - **Shimmer Effect**: Selected word subtly pulses with gentle background glow
-  - **Beautiful Unfold**: 450ms scale + opacity animation with organic motion curve
-  - **Poetic Categories**: "True Echoes" (perfect rhymes), "Gentle Echoes" (near rhymes), "Close Harmonies" (slant rhymes)
-  - **Staggered Chip Animation**: Each rhyme word appears with 30ms delay for graceful reveal
-  - **Visual Syllable Dots**: In rhyme chips, 4px circles for syllable counts ≤8
-
-- **Phase 5 - Settings as "Your Atmosphere"**
-  - **Redesigned Panel**: "Your Atmosphere" with palette icon and poetic subtitle
-  - **Ambiance Section**: Theme selector (Light/Dark/System) with visual icon buttons
-  - **Material You Toggle**: Adapt to wallpaper colors (Android 12+)
-  - **Enhanced Typography**: Live font previews with personality badges
-  - **Breathing Room Control**: Line height slider with poetic descriptions
-  - **Pure Focus Mode**: Zen UI toggle with clear explanation (fixed duplicate toggle bug)
-
-- **Phase 6 - Warmth & Personality**
-  - **Celebratory Save**: "Words saved ✨" message with check icon and rounded snackbar
-  - **Welcome Messages**: Time-aware greetings integrated throughout
-
-- **Phase 7 - Polish & Perfection**
-  - **Zero Issues**: Comprehensive code analysis with zero errors or warnings
-  - **Accessibility**: Contrast ratios verified, semantic structure maintained
-  - **Bug Fixes**: Editor background toned down, focus mode text visibility fixed, duplicate toggle removed
+- **Focus Mode**: Hide all distractions - just you and your words
 
 ### 🚀 Improved
 
-- **Sync Reliability**: Replaced basic CloudSyncService with ResilientSyncService for bulletproof syncing
-- **Editor Status Display**: Added real-time sync status to editor subtitle (e.g., "5 lines • Syncing...")
-- **Error Handling**: Background sync errors no longer disrupt user experience, gracefully queued for retry
-- **Sync Timing**: Increased sync check interval from 1 to 2 minutes to reduce battery/network usage
-- **Session Management**: Automatic session refresh prevents auth failures during long writing sessions
-- **Editor Background**: Disabled texture/gradient based on user feedback for cleaner writing experience
+- **Syllable Counter**: Now perfectly centered on wrapped lines, positioned to avoid text collision
+- **Sync Reliability**: Enterprise-grade offline-first architecture ensures zero data loss
+- **Editor Background**: Cleaner look with reduced textures based on user feedback
+- **Session Management**: Automatic token refresh prevents auth issues during long writing sessions
+- **Screenshot Tests**: Fixed to work with new streamlined file creation flow
 
 ### 🎨 Design
 
-- **Rhyme Dictionary Icon**: Changed from sparkles to book icon for better clarity and metaphor alignment
-- **Color Palette**: Warm, organic colors throughout - cream, sage, lavender, peach pastels
-- **Typography**: Spectral for headings (serif elegance), Work Sans for body (clean readability)
-- **Motion Design**: 120ms micro, 300ms standard, 450ms emphasized, 2500ms breathing cycle
-- **Visual Language**: Paper-like, handcrafted aesthetic replacing stark digital interface
+- **Icons**: Book icon for rhyme dictionary, music note for perfect rhymes section
+- **Typography**: Larger sizes (34pt headlines, 18pt body) with 1.65 line height for readability
+- **Animations**: Organic motion with custom easing curves (breathing, gentle reveals)
+- **Color Temperature**: Subtle shifts based on time of day (morning, afternoon, evening, night)
+- **Ghost-Style UI**: Nearly invisible controls (minimal opacity) for distraction-free writing
 
-### 🔧 Technical
+### 🔧 Fixed
 
-- **New Models**: SyncOperation with retry logic, SyncTransaction for audit, SyncStatus enum for UI
-- **New Services**: SyncQueueService (persistent queue), ConflictResolutionService (merge strategies), ResilientSyncService (orchestration)
-- **Enhanced WritingFile**: Automatic queue integration on write/delete with fire-and-forget pattern
-- **Optimized SyncProvider**: Removed unused CloudSyncService, integrated status stream from ResilientSyncService
-- **Architecture**: Local storage → Sync queue → Resilient sync → Cloud (with conflict resolution)
+- **Syllable Counter**: Properly centers on multi-line wrapped text
+- **Focus Mode**: Text now visible when focus mode enabled
+- **Rhyme Coloring**: Now covers all wrapped portions of a line
+- **Duplicate Settings**: Removed duplicate Material You toggle
+- **Integration Tests**: Updated for new direct-to-editor flow (no dialog)
 
 ## [3.4.0] - 2025-08-31
 

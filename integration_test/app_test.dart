@@ -51,7 +51,8 @@ Future<void> takeScreenshot(
   WidgetTester tester,
   String name,
 ) async {
-  await tester.pumpAndSettle();
+  // Use pump() instead of pumpAndSettle() to avoid waiting for autosave timer
+  await tester.pump(const Duration(milliseconds: 500));
   await binding.takeScreenshot(name);
   debugPrint('✓ Screenshot taken: $name');
 }
@@ -66,58 +67,64 @@ Future<void> createNewFile(
   if (fabFinder.evaluate().isNotEmpty) {
     debugPrint('Found custom FAB, tapping...');
     await tester.tap(fabFinder.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    // Take screenshot of new file dialog
-    debugPrint('Taking new_file_dialog screenshot...');
-    await takeScreenshot(binding, tester, 'new_file_dialog');
+    // New flow: FAB directly creates "Untitled Song" and opens editor (no dialog)
+    // Use pump() with duration instead of pumpAndSettle() to avoid waiting for autosave timer
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
 
-    // Enter file name
+    // We should now be in the editor screen
+    debugPrint('Should now be in editor screen...');
+
+    // Find text fields and add some content
     final textFieldFinder = find.byType(TextField);
-    if (textFieldFinder.evaluate().isNotEmpty) {
-      debugPrint('Entering filename...');
-      await tester.enterText(textFieldFinder.first, 'My Beautiful Song');
-      await tester.pumpAndSettle(const Duration(seconds: 1));
+    if (textFieldFinder.evaluate().length >= 2) {
+      debugPrint('Found text fields, adding sample content...');
 
-      // Find and tap create button
-      final createButtonFinder = find.text('Create');
-      if (createButtonFinder.evaluate().isNotEmpty) {
-        debugPrint('Tapping Create button...');
-        await tester.tap(createButtonFinder.first);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+      // First TextField is the title
+      await tester.enterText(textFieldFinder.at(0), 'Morning Light');
+      await tester.pump(const Duration(milliseconds: 500));
 
-        // Take screenshot of editor screen
-        debugPrint('Taking editor_screen screenshot...');
-        await takeScreenshot(binding, tester, 'editor_screen');
-
-        // Navigate back to home screen
-        await navigateBack(tester);
-      } else {
-        debugPrint('Create button not found, dismissing dialog');
-        await dismissDialog(tester);
-      }
+      // Second TextField is the content
+      await tester.enterText(textFieldFinder.at(1),
+        'Golden rays break through the night\n'
+        'Dreams awaken in the light\n'
+        'A new day starts to take its flight\n'
+        'Everything feels just right'
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
     } else {
-      debugPrint('TextField not found, dismissing dialog');
-      await dismissDialog(tester);
+      debugPrint('Could not find text fields for content');
     }
+
+    // Take screenshot of editor screen with content
+    debugPrint('Taking editor_screen screenshot...');
+    await takeScreenshot(binding, tester, 'editor_screen');
+
+    // Navigate back to home screen
+    await navigateBack(tester);
   } else {
     debugPrint('FAB not found, continuing without file creation');
   }
 }
 
 Future<void> navigateBack(WidgetTester tester) async {
-  final backButtonFinder = find.byIcon(Icons.arrow_back);
+  final backButtonFinder = find.byIcon(Icons.arrow_back_rounded);
   if (backButtonFinder.evaluate().isNotEmpty) {
     debugPrint('Navigating back with back button...');
     await tester.tap(backButtonFinder.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
   } else {
     debugPrint('Using Navigator.pop() to go back...');
     final navigator =
         tester.state<NavigatorState>(find.byType(Navigator).first);
     if (navigator.canPop()) {
       navigator.pop();
-      await tester.pumpAndSettle(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
     }
   }
 }
@@ -127,7 +134,7 @@ Future<void> dismissDialog(WidgetTester tester) async {
   final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
   if (navigator.canPop()) {
     navigator.pop();
-    await tester.pumpAndSettle(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
   }
 }
 
@@ -138,7 +145,8 @@ Future<void> captureSettingsScreen(
 
   if (settingsButtonFinder.evaluate().isNotEmpty) {
     await tester.tap(settingsButtonFinder.first);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
 
     // Take screenshot of settings screen
     debugPrint('Taking settings_screen screenshot...');
@@ -156,22 +164,34 @@ Future<void> dismissModal(WidgetTester tester) async {
   final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
   if (navigator.canPop()) {
     navigator.pop();
-    await tester.pumpAndSettle(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
   }
 }
 
 Future<void> toggleToDarkTheme(
     WidgetTester tester, IntegrationTestWidgetsFlutterBinding binding) async {
-  debugPrint('Looking for theme toggle...');
+  debugPrint('Opening settings to toggle theme...');
 
   // Ensure any modal is dismissed first
   await dismissModal(tester);
-  await tester.pumpAndSettle(const Duration(seconds: 1));
+  await tester.pump(const Duration(seconds: 1));
 
-  // Look for theme buttons (system, dark mode, light mode)
+  // Open settings panel
+  final settingsButtonFinder = find.byIcon(Icons.settings_rounded);
+  if (settingsButtonFinder.evaluate().isEmpty) {
+    debugPrint('Settings button not found, cannot toggle theme');
+    await takeScreenshot(binding, tester, 'current_theme');
+    return;
+  }
+
+  await tester.tap(settingsButtonFinder.first);
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pump(const Duration(seconds: 1));
+
+  // Look for theme buttons in settings panel (new icons!)
   final systemModeButtonFinder = find.byIcon(Icons.brightness_auto_rounded);
-  final darkModeButtonFinder = find.byIcon(Icons.dark_mode_rounded);
-  final lightModeButtonFinder = find.byIcon(Icons.light_mode_rounded);
+  final darkModeButtonFinder = find.byIcon(Icons.nights_stay_rounded);
+  final lightModeButtonFinder = find.byIcon(Icons.wb_sunny_rounded);
 
   debugPrint(
       'System mode button found: ${systemModeButtonFinder.evaluate().isNotEmpty}');
@@ -180,47 +200,27 @@ Future<void> toggleToDarkTheme(
   debugPrint(
       'Light mode button found: ${lightModeButtonFinder.evaluate().isNotEmpty}');
 
-  // Try to toggle to dark theme by clicking the theme button twice
-  if (systemModeButtonFinder.evaluate().isNotEmpty) {
-    debugPrint(
-        'App is in system mode, need to toggle twice to reach dark mode...');
-
-    // First toggle: System → Light
-    debugPrint('First toggle: System → Light');
-    await tester.tap(systemModeButtonFinder.first, warnIfMissed: false);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
-
-    // Find the theme button again (it should now show dark mode icon)
-    debugPrint('Looking for theme button for second toggle...');
-    final anyThemeIcon = find.byWidgetPredicate((widget) =>
-        widget is Icon &&
-        (widget.icon == Icons.brightness_auto_rounded ||
-            widget.icon == Icons.dark_mode_rounded ||
-            widget.icon == Icons.light_mode_rounded));
-
-    if (anyThemeIcon.evaluate().isNotEmpty) {
-      debugPrint('Found theme button, making second toggle: Light → Dark');
-      await tester.tap(anyThemeIcon.first, warnIfMissed: false);
-      await tester.pumpAndSettle(const Duration(seconds: 3));
-      debugPrint('Second toggle completed');
-    } else {
-      debugPrint('Could not find theme button for second toggle');
-    }
-
-    debugPrint('Taking dark_theme screenshot...');
-    await takeScreenshot(binding, tester, 'dark_theme');
-  } else if (darkModeButtonFinder.evaluate().isNotEmpty) {
-    debugPrint('App is in light mode, toggling to dark mode...');
+  // Tap dark mode button
+  if (darkModeButtonFinder.evaluate().isNotEmpty) {
+    debugPrint('Found dark mode button, tapping...');
     await tester.tap(darkModeButtonFinder.first, warnIfMissed: false);
-    await tester.pumpAndSettle(const Duration(seconds: 3));
-
-    debugPrint('Taking dark_theme screenshot...');
-    await takeScreenshot(binding, tester, 'dark_theme');
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
   } else if (lightModeButtonFinder.evaluate().isNotEmpty) {
-    debugPrint('App is already in dark mode');
-    await takeScreenshot(binding, tester, 'dark_theme');
+    debugPrint('Currently in light mode, tapping to switch...');
+    // In the new UI, we need to tap the container around the icon
+    // Try finding the dark mode button differently
+    await tester.tap(lightModeButtonFinder.first, warnIfMissed: false);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
   } else {
-    debugPrint('No theme toggle button found');
-    await takeScreenshot(binding, tester, 'current_theme');
+    debugPrint('No theme buttons found in settings');
   }
+
+  // Close settings panel
+  await dismissModal(tester);
+  await tester.pump(const Duration(seconds: 1));
+
+  debugPrint('Taking dark_theme screenshot...');
+  await takeScreenshot(binding, tester, 'dark_theme');
 }

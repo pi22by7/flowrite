@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
@@ -303,14 +304,40 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   List<Map<String, dynamic>> _getLineOffsets(TextPainter textPainter) {
     List<Map<String, dynamic>> offsets = [];
     final lineMetrics = textPainter.computeLineMetrics();
+    final text = _controller.text;
+    final logicalLines = text.split('\n');
 
-    double accumulatedHeight = 0.0;
-    for (var line in lineMetrics) {
+    // Map visual lines to logical lines
+    int visualLineIndex = 0;
+    for (int logicalLineIndex = 0; logicalLineIndex < logicalLines.length; logicalLineIndex++) {
+      if (visualLineIndex >= lineMetrics.length) break;
+
+      // Calculate starting offset for this logical line
+      double startOffset = 0.0;
+      for (int i = 0; i < visualLineIndex; i++) {
+        startOffset += lineMetrics[i].height;
+      }
+
+      // Count total height of all visual lines for this logical line
+      double totalHeight = 0.0;
+
+      // A logical line ends when we hit a hardBreak or reach the end
+      while (visualLineIndex < lineMetrics.length) {
+        final metric = lineMetrics[visualLineIndex];
+        totalHeight += metric.height;
+        visualLineIndex++;
+
+        // Check if this visual line ends the logical line (has hard break)
+        if (metric.hardBreak || visualLineIndex >= lineMetrics.length) {
+          break;
+        }
+      }
+
+      // Store the offset and total height for this logical line
       offsets.add({
-        'offset': accumulatedHeight,
-        'height': line.height,
+        'offset': startOffset,
+        'height': totalHeight,
       });
-      accumulatedHeight += line.height;
     }
 
     return offsets;
@@ -585,7 +612,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildHeaderButton(
-                icon: Icons.auto_awesome_rounded,
+                icon: Icons.menu_book_rounded,
                 onPressed: _showRhymePopupManually,
                 colorScheme: colorScheme,
                 isHighlighted: _controller.selection.isValid && !_controller.selection.isCollapsed,
@@ -1078,25 +1105,18 @@ class _SyllableCountPainter extends CustomPainter {
       // Use dots for counts up to 12, otherwise show number
       if (syllableCount <= 12) {
         final dotSize = 4.0;
-        final dotSpacing = 6.0;
-        final totalWidth = (syllableCount * dotSize) + ((syllableCount - 1) * (dotSpacing - dotSize));
 
-        final startX = size.width - totalWidth - 24;
-        final centerY = offsetY + (height / 2);
+        // Fixed position on the right side (further right to avoid text clash)
+        final centerX = size.width - 16;
+        // Add slight offset to optically center the shapes with the text baseline
+        final centerY = offsetY + (height / 2) + 3;
 
         final dotPaint = Paint()
           ..color = dotColor
           ..style = PaintingStyle.fill;
 
-        // Draw dots
-        for (int j = 0; j < syllableCount; j++) {
-          final dotX = startX + (j * dotSpacing);
-          canvas.drawCircle(
-            Offset(dotX, centerY),
-            isActive ? dotSize / 2 : dotSize / 2.5,
-            dotPaint,
-          );
-        }
+        // Draw shape made of dots based on syllable count
+        _drawSyllableShape(canvas, syllableCount, centerX, centerY, dotSize, dotPaint, isActive);
       } else {
         // For longer lines, show number instead
         final textSpan = TextSpan(
@@ -1116,12 +1136,124 @@ class _SyllableCountPainter extends CustomPainter {
         textPainter.layout(minWidth: 0, maxWidth: 50);
 
         final position = Offset(
-          size.width - textPainter.width - 24,
+          size.width - textPainter.width - 16,
           offsetY + (height - textPainter.height) / 2,
         );
 
         textPainter.paint(canvas, position);
       }
+    }
+  }
+
+  /// Draw shapes made of dots based on syllable count
+  /// All shapes stay in fixed position and are made of small dots
+  void _drawSyllableShape(Canvas canvas, int syllableCount, double x, double y,
+      double dotSize, Paint paint, bool isActive) {
+    final radius = dotSize / 2;
+    final spacing = 3.5; // Spacing between dots
+
+    switch (syllableCount) {
+      case 1:
+        // Single dot •
+        canvas.drawCircle(Offset(x, y), radius, paint);
+        break;
+
+      case 2:
+        // Two dots vertically ⁚
+        canvas.drawCircle(Offset(x, y - spacing), radius, paint);
+        canvas.drawCircle(Offset(x, y + spacing), radius, paint);
+        break;
+
+      case 3:
+        // Triangle made of 3 dots ∴
+        canvas.drawCircle(Offset(x, y - spacing), radius, paint);
+        canvas.drawCircle(Offset(x - spacing, y + spacing), radius, paint);
+        canvas.drawCircle(Offset(x + spacing, y + spacing), radius, paint);
+        break;
+
+      case 4:
+        // Square made of 4 dots ∷
+        canvas.drawCircle(Offset(x - spacing, y - spacing), radius, paint);
+        canvas.drawCircle(Offset(x + spacing, y - spacing), radius, paint);
+        canvas.drawCircle(Offset(x - spacing, y + spacing), radius, paint);
+        canvas.drawCircle(Offset(x + spacing, y + spacing), radius, paint);
+        break;
+
+      case 5:
+        // Pentagon - 5 dots in circle
+        _drawDotsInCircle(canvas, x, y, radius, spacing * 1.8, 5, paint);
+        break;
+
+      case 6:
+        // Hexagon - 6 dots in circle
+        _drawDotsInCircle(canvas, x, y, radius, spacing * 1.8, 6, paint);
+        break;
+
+      case 7:
+        // 7 dots - hexagon + center
+        _drawDotsInCircle(canvas, x, y, radius, spacing * 1.8, 6, paint);
+        canvas.drawCircle(Offset(x, y), radius, paint);
+        break;
+
+      case 8:
+        // 8 dots - two squares stacked
+        final s = spacing * 0.8;
+        canvas.drawCircle(Offset(x - s, y - spacing * 1.5), radius, paint);
+        canvas.drawCircle(Offset(x + s, y - spacing * 1.5), radius, paint);
+        canvas.drawCircle(Offset(x - s, y - spacing * 0.5), radius, paint);
+        canvas.drawCircle(Offset(x + s, y - spacing * 0.5), radius, paint);
+        canvas.drawCircle(Offset(x - s, y + spacing * 0.5), radius, paint);
+        canvas.drawCircle(Offset(x + s, y + spacing * 0.5), radius, paint);
+        canvas.drawCircle(Offset(x - s, y + spacing * 1.5), radius, paint);
+        canvas.drawCircle(Offset(x + s, y + spacing * 1.5), radius, paint);
+        break;
+
+      case 9:
+        // 9 dots - 3x3 grid
+        for (int row = -1; row <= 1; row++) {
+          for (int col = -1; col <= 1; col++) {
+            canvas.drawCircle(
+              Offset(x + col * spacing, y + row * spacing),
+              radius,
+              paint,
+            );
+          }
+        }
+        break;
+
+      case 10:
+        // 10 dots - two pentagons
+        _drawDotsInCircle(canvas, x, y - spacing, radius, spacing * 1.5, 5, paint);
+        _drawDotsInCircle(canvas, x, y + spacing, radius, spacing * 1.5, 5, paint);
+        break;
+
+      case 11:
+        // 11 dots - hexagon + pentagon
+        _drawDotsInCircle(canvas, x, y - spacing, radius, spacing * 1.4, 6, paint);
+        _drawDotsInCircle(canvas, x, y + spacing, radius, spacing * 1.4, 5, paint);
+        break;
+
+      case 12:
+        // 12 dots - two hexagons
+        _drawDotsInCircle(canvas, x, y - spacing, radius, spacing * 1.4, 6, paint);
+        _drawDotsInCircle(canvas, x, y + spacing, radius, spacing * 1.4, 6, paint);
+        break;
+
+      default:
+        // Fallback to single dot
+        canvas.drawCircle(Offset(x, y), radius, paint);
+    }
+  }
+
+  /// Helper to draw dots arranged in a circle (for pentagon, hexagon, etc.)
+  void _drawDotsInCircle(Canvas canvas, double centerX, double centerY,
+      double dotRadius, double circleRadius, int count, Paint paint) {
+    final angleStep = (2 * pi) / count;
+    for (int i = 0; i < count; i++) {
+      final angle = angleStep * i - pi / 2; // Start from top
+      final x = centerX + circleRadius * cos(angle);
+      final y = centerY + circleRadius * sin(angle);
+      canvas.drawCircle(Offset(x, y), dotRadius, paint);
     }
   }
 

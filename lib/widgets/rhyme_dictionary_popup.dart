@@ -305,7 +305,7 @@ class _RhymeDictionaryPopupState extends State<RhymeDictionaryPopup>
               _perfectRhymes,
               theme,
               colorScheme,
-              Icons.auto_awesome_rounded,
+              Icons.music_note_rounded,
             ),
             if (_nearRhymes.isNotEmpty) const SizedBox(height: 12),
           ],
