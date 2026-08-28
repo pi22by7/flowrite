@@ -49,6 +49,7 @@ Tasks related to the project's infrastructure and maintenance.
 Long-term ideas for the project.
 
 - [ ] **Collaboration Features**: Allow multiple users to collaborate on the same note in real-time. (Issue #)
-- [ ] **Export Options**: Add the ability to export notes to different formats (e.g., PDF, TXT). (Issue #)
+- [x] **Export Options**: Add the ability to export notes to different formats (e.g., PDF, TXT). (Issue #2)
+- [ ] **iCloud Drive Sync Backend**: Add `ICloudSyncBackend` (iOS/macOS-only) implementing the `SyncBackend` interface alongside Supabase and WebDAV, gated by `Platform.isIOS || Platform.isMacOS`. Requires Xcode-side setup (iCloud container entitlement, Apple Developer Team/provisioning) that can't be scripted. (Issue #2, Phase 4 of the sync backend plan)
 - [ ] **Plugin System**: Allow users to extend the app's functionality with plugins. (Issue #)
 - [ ] **Mobile App Store**: Publish to Google Play Store and Apple App Store. (Issue #)

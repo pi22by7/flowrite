@@ -1,10 +1,49 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/sync_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/export_service.dart';
+import '../services/file_service.dart';
+import '../services/storage_service.dart';
+import '../services/webdav_config_service.dart';
 
-class SettingsPanel extends StatelessWidget {
+class SettingsPanel extends StatefulWidget {
   const SettingsPanel({super.key});
+
+  @override
+  State<SettingsPanel> createState() => _SettingsPanelState();
+}
+
+class _SettingsPanelState extends State<SettingsPanel> {
+  bool _isMigrating = false;
+  bool _isTestingWebDav = false;
+  bool _isSavingWebDav = false;
+  final _webDavConfigService = WebDavConfigService();
+  final _serverUrlController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _appPasswordController = TextEditingController();
+  bool _webDavFormLoaded = false;
+
+  @override
+  void dispose() {
+    _serverUrlController.dispose();
+    _usernameController.dispose();
+    _appPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadWebDavForm() async {
+    if (_webDavFormLoaded) return;
+    _webDavFormLoaded = true;
+    final config = await _webDavConfigService.getConfig();
+    if (config == null || !mounted) return;
+    _serverUrlController.text = config.serverUrl;
+    _usernameController.text = config.username;
+    _appPasswordController.text = config.appPassword;
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +179,24 @@ class SettingsPanel extends StatelessWidget {
             icon: Icons.tune_rounded,
             description: 'Helpers for your creative flow',
             child: _buildFeatures(settings, colorScheme),
+          ),
+
+          // Storage Section
+          _buildMinimalSection(
+            context,
+            title: 'Storage & Export',
+            icon: Icons.folder_outlined,
+            description: 'Where your words live, and how to take them with you',
+            child: _buildStorageSection(context, settings, colorScheme),
+          ),
+
+          // Cloud Sync Section
+          _buildMinimalSection(
+            context,
+            title: 'Cloud Sync',
+            icon: Icons.cloud_sync_outlined,
+            description: 'Keep your words backed up and in sync everywhere',
+            child: _buildCloudSyncSection(context, colorScheme),
           ),
 
           // Focus Mode Section
@@ -441,6 +498,16 @@ class SettingsPanel extends StatelessWidget {
               onChanged: (value) => settings.setShowSyllables(value),
               colorScheme: colorScheme,
             ),
+            if (settings.showSyllables) ...[
+              const SizedBox(height: 12),
+              _buildMinimalSwitch(
+                title: 'Dot Pattern Syllable Counter',
+                subtitle: 'Show counts as dot shapes instead of numbers',
+                value: settings.syllableDotPattern,
+                onChanged: (value) => settings.setSyllableDotPattern(value),
+                colorScheme: colorScheme,
+              ),
+            ],
             const SizedBox(height: 12),
             _buildMinimalSwitch(
               title: 'Show Rhyme Colors',
@@ -453,6 +520,359 @@ class SettingsPanel extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget _buildStorageSection(
+    BuildContext context,
+    SettingsProvider settings,
+    ColorScheme colorScheme,
+  ) {
+    final currentPath = settings.customSavePath.isEmpty
+        ? 'Default app storage'
+        : settings.customSavePath;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Save Location',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currentPath,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton(
+                onPressed: _isMigrating ? null : () => _changeSaveLocation(context, settings),
+                child: _isMigrating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Change...'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _exportCurrentFiles(context, all: false),
+                icon: const Icon(Icons.ios_share_rounded, size: 16),
+                label: const Text('Export Current'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _exportCurrentFiles(context, all: true),
+                icon: const Icon(Icons.archive_outlined, size: 16),
+                label: const Text('Export All'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _changeSaveLocation(
+    BuildContext context,
+    SettingsProvider settings,
+  ) async {
+    final selectedPath = await FilePicker.platform.getDirectoryPath();
+    if (selectedPath == null || !mounted) return;
+
+    setState(() => _isMigrating = true);
+
+    try {
+      final storage = StorageService.create();
+      if (storage is! FileSystemStorageService) {
+        // Web has no filesystem to migrate; nothing to do.
+        return;
+      }
+
+      final result = await storage.migrateStorageLocation(selectedPath);
+      await settings.refreshCustomSavePath();
+
+      if (!context.mounted) return;
+      final message = result.success
+          ? 'Moved ${result.migratedCount} file(s) to new location'
+          : '${result.migratedCount} file(s) moved, ${result.failedIds.length} failed - old location kept as fallback';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to change save location: $e')));
+    } finally {
+      if (mounted) setState(() => _isMigrating = false);
+    }
+  }
+
+  Widget _buildCloudSyncSection(BuildContext context, ColorScheme colorScheme) {
+    return Consumer<SyncProvider>(
+      builder: (context, syncProvider, child) {
+        final backendType = syncProvider.backendType;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: SyncBackendType.values
+                  .where((t) => t != SyncBackendType.icloud) // Phase 4, not implemented yet
+                  .map((type) {
+                final isSelected = type == backendType;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () async {
+                          if (type == SyncBackendType.webdav) {
+                            await _loadWebDavForm();
+                            if (mounted) setState(() {});
+                            return;
+                          }
+                          await syncProvider.switchBackend(type);
+                          if (!context.mounted) return;
+                          final settings = Provider.of<SettingsProvider>(context, listen: false);
+                          await settings.setSyncBackendType(type);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? colorScheme.primaryContainer.withValues(alpha: 0.5)
+                                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? colorScheme.primary.withValues(alpha: 0.5)
+                                  : colorScheme.outline.withValues(alpha: 0.1),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Text(
+                            _backendLabel(type),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            if (backendType == SyncBackendType.webdav || _webDavFormLoaded) ...[
+              const SizedBox(height: 16),
+              _buildWebDavForm(context, syncProvider, colorScheme),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  String _backendLabel(SyncBackendType type) {
+    switch (type) {
+      case SyncBackendType.none:
+        return 'None';
+      case SyncBackendType.supabase:
+        return 'Supabase';
+      case SyncBackendType.webdav:
+        return 'WebDAV';
+      case SyncBackendType.icloud:
+        return 'iCloud';
+    }
+  }
+
+  Widget _buildWebDavForm(
+    BuildContext context,
+    SyncProvider syncProvider,
+    ColorScheme colorScheme,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NextCloud / ownCloud',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _serverUrlController,
+            decoration: const InputDecoration(
+              labelText: 'Server URL',
+              hintText: 'https://cloud.example.com/remote.php/dav/files/user/',
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _usernameController,
+            decoration: const InputDecoration(labelText: 'Username', isDense: true),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _appPasswordController,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'App Password', isDense: true),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _isTestingWebDav ? null : () => _testWebDavConnection(context),
+                  child: _isTestingWebDav
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Test Connection'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: _isSavingWebDav ? null : () => _saveWebDavConfig(context, syncProvider),
+                  child: _isSavingWebDav
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save & Connect'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  WebDavConfig _currentWebDavFormConfig() {
+    return WebDavConfig(
+      serverUrl: _serverUrlController.text.trim(),
+      username: _usernameController.text.trim(),
+      appPassword: _appPasswordController.text,
+    );
+  }
+
+  Future<void> _testWebDavConnection(BuildContext context) async {
+    setState(() => _isTestingWebDav = true);
+    try {
+      final success = await _webDavConfigService.testConnection(_currentWebDavFormConfig());
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(success ? 'Connection successful' : 'Connection failed - check your details'),
+      ));
+    } finally {
+      if (mounted) setState(() => _isTestingWebDav = false);
+    }
+  }
+
+  Future<void> _saveWebDavConfig(BuildContext context, SyncProvider syncProvider) async {
+    setState(() => _isSavingWebDav = true);
+    try {
+      final config = _currentWebDavFormConfig();
+      await _webDavConfigService.saveConfig(config);
+      await syncProvider.switchBackend(SyncBackendType.webdav);
+
+      if (!context.mounted) return;
+      final settings = Provider.of<SettingsProvider>(context, listen: false);
+      await settings.setSyncBackendType(SyncBackendType.webdav);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('WebDAV connected')));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to save WebDAV settings: $e')));
+    } finally {
+      if (mounted) setState(() => _isSavingWebDav = false);
+    }
+  }
+
+  Future<void> _exportCurrentFiles(BuildContext context, {required bool all}) async {
+    try {
+      final fileService = FileService();
+      final files = await fileService.getFiles(context);
+      if (files.isEmpty) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('No files to export')));
+        return;
+      }
+
+      final exportService = ExportService();
+      if (all) {
+        await exportService.exportAll(files);
+      } else {
+        files.sort((a, b) => b.lastModified.compareTo(a.lastModified));
+        await exportService.exportFile(files.first);
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    }
   }
 
   Widget _buildMinimalSwitch({

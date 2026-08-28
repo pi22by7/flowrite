@@ -890,6 +890,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                             activeTextColor: colorScheme.primary,
                             inactiveTextColor:
                                 colorScheme.onSurface.withValues(alpha: 0.3),
+                            useDotPattern: settings.syllableDotPattern,
                           ),
                         ),
                       ),
@@ -1068,6 +1069,7 @@ class _SyllableCountPainter extends CustomPainter {
   final Color highlightColor;
   final Color activeTextColor;
   final Color inactiveTextColor;
+  final bool useDotPattern;
 
   _SyllableCountPainter({
     required this.lineOffsets,
@@ -1077,6 +1079,7 @@ class _SyllableCountPainter extends CustomPainter {
     required this.highlightColor,
     required this.activeTextColor,
     required this.inactiveTextColor,
+    this.useDotPattern = true,
   });
 
   @override
@@ -1115,7 +1118,7 @@ class _SyllableCountPainter extends CustomPainter {
       final dotColor = isActive ? activeTextColor : inactiveTextColor;
 
       // Use dots for counts up to 12, otherwise show number
-      if (syllableCount <= 12) {
+      if (useDotPattern && syllableCount <= 12) {
         final dotSize = 4.0;
 
         // Fixed position on the right side (further right to avoid text clash)
@@ -1273,6 +1276,7 @@ class _SyllableCountPainter extends CustomPainter {
   bool shouldRepaint(covariant _SyllableCountPainter oldDelegate) {
     return oldDelegate.lineOffsets != lineOffsets ||
         oldDelegate.syllableCounts != syllableCounts ||
-        oldDelegate.currentLine != currentLine;
+        oldDelegate.currentLine != currentLine ||
+        oldDelegate.useDotPattern != useDotPattern;
   }
 }

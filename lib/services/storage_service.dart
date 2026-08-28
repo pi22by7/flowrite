@@ -4,6 +4,16 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Result of a [FileSystemStorageService.migrateStorageLocation] call.
+class MigrationResult {
+  final int migratedCount;
+  final List<String> failedIds;
+
+  MigrationResult({required this.migratedCount, required this.failedIds});
+
+  bool get success => failedIds.isEmpty;
+}
+
 abstract class StorageService {
   Future<void> writeContent(String id, String content);
   Future<String> readContent(String id);
@@ -25,11 +35,20 @@ abstract class StorageService {
 
 class FileSystemStorageService extends StorageService {
   static const String fileExtension = '.text';
+  static const String _customSavePathKey = 'customSavePath';
+
+  Future<String> get _defaultPath async {
+    final directory = await getApplicationDocumentsDirectory();
+    return '${directory.path}/writing_files';
+  }
 
   Future<String> get _localPath async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/writing_files';
+      final prefs = await SharedPreferences.getInstance();
+      final customPath = prefs.getString(_customSavePathKey);
+      final path = (customPath != null && customPath.isNotEmpty)
+          ? customPath
+          : await _defaultPath;
       await Directory(path).create(recursive: true);
       debugPrint('Local path: $path');
       return path;
@@ -42,6 +61,77 @@ class FileSystemStorageService extends StorageService {
   Future<File> _getFile(String id) async {
     final path = await _localPath;
     return File('$path/$id$fileExtension');
+  }
+
+  /// Copies every file (content + metadata) from the current save location
+  /// to [newBasePath], verifies each copy, then deletes the originals.
+  /// Never deletes before a successful, verified copy.
+  Future<MigrationResult> migrateStorageLocation(String newBasePath) async {
+    final oldPath = await _localPath;
+    if (oldPath == newBasePath) {
+      return MigrationResult(migratedCount: 0, failedIds: []);
+    }
+
+    await Directory(newBasePath).create(recursive: true);
+
+    final oldDir = Directory(oldPath);
+    final failedIds = <String>[];
+    var migratedCount = 0;
+
+    if (await oldDir.exists()) {
+      final files = await oldDir
+          .list()
+          .where((f) => f.path.endsWith(fileExtension))
+          .toList();
+
+      for (final entity in files) {
+        final fileName = entity.path.split('/').last;
+        final id = fileName.replaceAll(fileExtension, '');
+        try {
+          final oldFile = File(entity.path);
+          final content = await oldFile.readAsString();
+
+          final newFile = File('$newBasePath/$fileName');
+          await newFile.writeAsString(content, mode: FileMode.write, flush: true);
+
+          final verifiedContent = await newFile.readAsString();
+          if (verifiedContent != content) {
+            failedIds.add(id);
+            continue;
+          }
+
+          migratedCount++;
+        } catch (e) {
+          debugPrint('Error migrating file $id: $e');
+          failedIds.add(id);
+        }
+      }
+    }
+
+    if (failedIds.isNotEmpty) {
+      debugPrint('Migration had ${failedIds.length} failures, aborting cleanup of old files');
+      return MigrationResult(migratedCount: migratedCount, failedIds: failedIds);
+    }
+
+    // All files verified copied — safe to persist the new path and clean up old ones.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_customSavePathKey, newBasePath);
+
+    if (await oldDir.exists()) {
+      final files = await oldDir
+          .list()
+          .where((f) => f.path.endsWith(fileExtension))
+          .toList();
+      for (final entity in files) {
+        try {
+          await entity.delete();
+        } catch (e) {
+          debugPrint('Error deleting old file ${entity.path}: $e');
+        }
+      }
+    }
+
+    return MigrationResult(migratedCount: migratedCount, failedIds: failedIds);
   }
 
   @override
@@ -104,8 +194,8 @@ class FileSystemStorageService extends StorageService {
   @override
   Future<List<String>> getAllFileIds() async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final writingFilesDir = Directory('${directory.path}/writing_files');
+      final path = await _localPath;
+      final writingFilesDir = Directory(path);
 
       if (!await writingFilesDir.exists()) {
         debugPrint('Writing files directory does not exist');

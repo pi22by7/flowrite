@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/writing_file.dart';
+import '../models/sync_operation.dart';
 import '../providers/sync_provider.dart';
-import '../services/cloud_sync_service.dart';
+import '../services/backends/supabase_sync_backend.dart';
+import '../services/sync_backend.dart';
 import '../services/storage_service.dart';
 
 class FileService {
-  final CloudSyncService _cloudSync;
+  final SyncBackend _cloudSync;
   late final StorageService _storage;
   static bool _migrationCompleted = false;
 
-  FileService({CloudSyncService? cloudSync})
-      : _cloudSync = cloudSync ?? CloudSyncService() {
+  FileService({SyncBackend? cloudSync})
+      : _cloudSync = cloudSync ?? SupabaseSyncBackend() {
     _storage = StorageService.create();
   }
 
@@ -204,21 +205,21 @@ class FileService {
           );
 
           if (!syncSuccess) {
-            // Store for later sync if cloud sync fails
-            await _storePendingChange(file);
+            // Queue for retry if the immediate sync fails
+            await _cloudSync.queueFileSync(file, SyncOperationType.create);
             debugPrint(
-                'File created locally, cloud sync failed - stored for later sync');
+                'File created locally, cloud sync failed - queued for retry');
           } else {
             debugPrint('File created and synced to cloud successfully');
           }
         } else {
-          // Store for later sync when offline or not signed in
-          await _storePendingChange(file);
-          debugPrint('File created locally, stored for later sync');
+          // Queue for retry when offline or not signed in
+          await _cloudSync.queueFileSync(file, SyncOperationType.create);
+          debugPrint('File created locally, queued for retry');
         }
       } catch (e) {
         debugPrint('Error during cloud sync during file creation: $e');
-        await _storePendingChange(file);
+        await _cloudSync.queueFileSync(file, SyncOperationType.create);
       }
 
       return file;
@@ -260,14 +261,14 @@ class FileService {
           if (syncSuccess) {
             resultMessage = 'File saved locally and synced to cloud';
           } else {
-            // Store for later sync if cloud sync fails
-            await _storePendingChange(file);
+            // Queue for retry if the immediate sync fails
+            await _cloudSync.queueFileSync(file, SyncOperationType.update);
             resultMessage =
                 'File saved locally, cloud sync failed - will retry later';
           }
         } else {
-          // Store for later sync when offline or not signed in
-          await _storePendingChange(file);
+          // Queue for retry when offline or not signed in
+          await _cloudSync.queueFileSync(file, SyncOperationType.update);
           if (!isOnline) {
             resultMessage = 'File saved locally (offline mode)';
           } else {
@@ -276,8 +277,8 @@ class FileService {
         }
       } catch (e) {
         debugPrint('Error during cloud sync: $e');
-        // Store for later sync if cloud sync fails
-        await _storePendingChange(file);
+        // Queue for retry if the immediate sync fails
+        await _cloudSync.queueFileSync(file, SyncOperationType.update);
         resultMessage =
             'File saved locally, cloud sync failed - will retry later';
       }
@@ -290,73 +291,6 @@ class FileService {
       } else {
         return (false, 'Failed to save file locally: ${e.toString()}');
       }
-    }
-  }
-
-  Future<void> _storePendingChange(WritingFile file) async {
-    final prefs = await SharedPreferences.getInstance();
-    final pendingChanges = prefs.getStringList('pending_changes') ?? [];
-
-    // Add file ID to pending changes if not already present
-    if (!pendingChanges.contains(file.id)) {
-      pendingChanges.add(file.id);
-      await prefs.setStringList('pending_changes', pendingChanges);
-    }
-  }
-
-  Future<void> syncPendingChanges() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final pendingChanges = prefs.getStringList('pending_changes') ?? [];
-
-      if (pendingChanges.isEmpty) {
-        debugPrint('No pending changes to sync');
-        return;
-      }
-
-      debugPrint('Syncing ${pendingChanges.length} pending changes');
-      final localFiles = await _getLocalFiles();
-      final successfulSyncs = <String>[];
-
-      for (String fileId in pendingChanges) {
-        try {
-          final file = localFiles.where((f) => f.id == fileId).firstOrNull;
-          if (file != null) {
-            final syncSuccess = await _cloudSync.syncFile(file).timeout(
-              const Duration(seconds: 15),
-              onTimeout: () {
-                debugPrint('Sync timeout for file $fileId');
-                return false;
-              },
-            );
-
-            if (syncSuccess) {
-              successfulSyncs.add(fileId);
-              debugPrint('Successfully synced file $fileId');
-            } else {
-              debugPrint('Failed to sync file $fileId');
-            }
-          } else {
-            debugPrint('File $fileId not found locally, removing from pending');
-            successfulSyncs
-                .add(fileId); // Remove from pending since file doesn't exist
-          }
-        } catch (e) {
-          debugPrint('Error syncing pending change for file $fileId: $e');
-        }
-      }
-
-      // Remove only successfully synced files from pending changes
-      if (successfulSyncs.isNotEmpty) {
-        final remainingChanges = pendingChanges
-            .where((id) => !successfulSyncs.contains(id))
-            .toList();
-        await prefs.setStringList('pending_changes', remainingChanges);
-        debugPrint(
-            'Removed ${successfulSyncs.length} successful syncs, ${remainingChanges.length} pending changes remain');
-      }
-    } catch (e) {
-      debugPrint('Error in syncPendingChanges: $e');
     }
   }
 
