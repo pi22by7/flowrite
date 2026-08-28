@@ -5,6 +5,8 @@ import 'package:flowrite/services/cmu_pronunciation_service.dart';
 import 'package:flowrite/services/rhyme_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('CMU Pronunciation Service Tests', () {
     late CMUPronunciationService cmuService;
 

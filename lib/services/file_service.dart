@@ -133,10 +133,12 @@ class FileService {
 
       if (mergedFiles.containsKey(cloudFile.id)) {
         final localFile = mergedFiles[cloudFile.id]!;
-        // Only replace with cloud version if it's significantly newer (more than 1 second)
-        // This helps avoid issues with slight timestamp differences
-        if (cloudFile.lastModified
-            .isAfter(localFile.lastModified.add(const Duration(seconds: 1)))) {
+        // Cloud wins whenever it's strictly newer. A same-device round-trip
+        // save writes the identical lastModified to both sides, so this
+        // never thrashes on its own save - the old 1s grace window only
+        // served to silently drop genuine near-simultaneous edits from a
+        // second device.
+        if (cloudFile.lastModified.isAfter(localFile.lastModified)) {
           // Save cloud version locally
           try {
             await cloudFile.writeContent(cloudFile.content ?? '');
@@ -367,20 +369,31 @@ class FileService {
   }
 
   Future<void> renameFile(WritingFile file, String newName) async {
-    // Delete old local file
-    await file.delete();
+    // Rename only touches the name in metadata - it must never rewrite
+    // content. Rewriting content here would race with a concurrent body
+    // autosave: this method's readContent() could capture stale content,
+    // and writing it back under a fresh lastModified would clobber newer
+    // content already on disk with an older copy that now looks newest.
+    final existingMetadata = await _storage.getMetadata(file.id);
+    final lastModified = existingMetadata != null &&
+            existingMetadata['lastModified'] != null
+        ? DateTime.parse(existingMetadata['lastModified'])
+        : file.lastModified;
 
+    await _storage.saveMetadata(file.id, {
+      'id': file.id,
+      'name': newName,
+      'lastModified': lastModified.toIso8601String(),
+    });
+
+    // Sync current on-disk content (under the new name) to the cloud.
+    final content = await file.readContent();
     final updatedFile = WritingFile(
       id: file.id,
       name: newName,
-      content: await file.readContent(),
-      lastModified: DateTime.now(),
+      content: content,
+      lastModified: lastModified,
     );
-
-    // Save with new name
-    await updatedFile.writeContent(await file.readContent());
-
-    // Sync to cloud
     await _cloudSync.syncFile(updatedFile);
   }
 

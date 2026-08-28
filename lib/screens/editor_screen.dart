@@ -969,11 +969,23 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
       }
 
       if (success && mounted) {
-        setState(() {
-          _originalTitle = _titleController.text;
-          _originalContent = _controller.text;
-          _hasUnsavedChanges = false;
-        });
+        // If the user kept typing while this save was in flight, the file
+        // on disk only has the `title`/`body` snapshot captured above -
+        // don't mark those newer edits as saved, or they'd never get
+        // written (the next autosave won't fire because _hasUnsavedChanges
+        // would already read false).
+        final editedDuringSave = _titleController.text.trim() != title ||
+            _controller.text != body;
+
+        if (editedDuringSave) {
+          _startAutosaveTimer();
+        } else {
+          setState(() {
+            _originalTitle = _titleController.text;
+            _originalContent = _controller.text;
+            _hasUnsavedChanges = false;
+          });
+        }
       }
 
       if (showFeedback && mounted) {

@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/resilient_sync_service.dart';
+import '../services/file_service.dart';
 import '../models/sync_operation.dart';
 
 class SyncProvider extends ChangeNotifier {
   final AuthService _auth = AuthService();
   final ResilientSyncService _resilientSync = ResilientSyncService();
+  final FileService _fileService = FileService();
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
@@ -47,6 +49,9 @@ class SyncProvider extends ChangeNotifier {
     try {
       // Use resilient sync service which handles retries and conflicts
       await _resilientSync.processSyncQueue();
+      // Also drain FileService's own pending-changes list (populated when
+      // saveFile()'s direct cloud sync fails) - nothing else retries it.
+      await _fileService.syncPendingChanges();
       debugPrint('✅ Pending syncs processed');
     } catch (e) {
       // Don't rethrow - resilient sync handles errors gracefully
@@ -79,6 +84,7 @@ class SyncProvider extends ChangeNotifier {
 
       // Initial sync after sign in using resilient service
       await _resilientSync.processSyncQueue();
+      await _fileService.syncPendingChanges();
 
       notifyListeners();
       return true;

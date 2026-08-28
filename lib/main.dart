@@ -23,7 +23,7 @@ void main() async {
 
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
-    anonKey: SupabaseConfig.supabaseAnonKey,
+    publishableKey: SupabaseConfig.supabaseAnonKey,
     authOptions: const FlutterAuthClientOptions(
       autoRefreshToken: true,
     ),

@@ -87,7 +87,7 @@ class AuthService {
       // Listen for incoming requests
       server.listen((HttpRequest request) async {
         final uri = request.uri;
-        debugPrint('Received callback: $uri');
+        debugPrint('Received callback on path: ${uri.path}');
 
         // Handle CORS preflight requests
         if (request.method == 'OPTIONS') {
@@ -105,7 +105,8 @@ class AuthService {
           final encodedUrl = request.uri.queryParameters['url'];
           if (encodedUrl != null) {
             final fullUrl = Uri.decodeComponent(encodedUrl);
-            debugPrint('Received full callback URL: $fullUrl');
+            debugPrint('Received callback URL (tokens redacted): '
+                '${Uri.parse(fullUrl).replace(fragment: '', query: '')}');
 
             // Send success response
             final successHtml = '''<!DOCTYPE html>
@@ -284,7 +285,8 @@ class AuthService {
             'OAuth timeout - authentication callback was not received'),
       );
 
-      debugPrint('Received OAuth callback: $callbackUrl');
+      debugPrint('Received OAuth callback (tokens redacted): '
+          '${Uri.parse(callbackUrl).replace(fragment: '', query: '')}');
 
       // Parse the callback URL for auth tokens
       final uri = Uri.parse(callbackUrl);
@@ -297,6 +299,7 @@ class AuthService {
 
         if (accessToken != null) {
           debugPrint('Found tokens in fragment, using setSession...');
+          // Never log accessToken/refreshToken values themselves.
           
           // Extract refresh token
           final refreshToken = params['refresh_token'];
