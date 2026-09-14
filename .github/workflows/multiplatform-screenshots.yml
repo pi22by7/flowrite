@@ -20,7 +20,7 @@ permissions:
   actions: read
 
 env:
-  FLUTTER_VERSION: '3.32.6'
+  FLUTTER_VERSION: '3.47.4'
 
 jobs:
   # Job 1: Android Screenshots
