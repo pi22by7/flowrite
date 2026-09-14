@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-only: allows plain HTTP to the emulator loopback host so local
+     WebDAV servers (e.g. a NextCloud test instance on the dev machine) can
+     be reached without HTTPS during development. Never bundled in release
+     builds (this file lives under src/debug). -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

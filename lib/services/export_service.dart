@@ -15,9 +15,8 @@ class ExportService {
     await tempFile.writeAsString(content);
 
     try {
-      await Share.shareXFiles(
-        [XFile(tempFile.path)],
-        fileNameOverrides: ['$safeName.txt'],
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(tempFile.path, name: '$safeName.txt')]),
       );
     } finally {
       if (await tempFile.exists()) {
@@ -47,9 +46,8 @@ class ExportService {
     }
 
     try {
-      await Share.shareXFiles(
-        [XFile(zipFile.path)],
-        fileNameOverrides: ['flowrite_export.zip'],
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(zipFile.path, name: 'flowrite_export.zip')]),
       );
     } finally {
       if (await zipFile.exists()) {

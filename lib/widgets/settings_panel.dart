@@ -612,7 +612,7 @@ class _SettingsPanelState extends State<SettingsPanel> {
     BuildContext context,
     SettingsProvider settings,
   ) async {
-    final selectedPath = await FilePicker.platform.getDirectoryPath();
+    final selectedPath = await FilePicker.getDirectoryPath();
     if (selectedPath == null || !mounted) return;
 
     setState(() => _isMigrating = true);
