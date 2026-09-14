@@ -25,7 +25,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderStateMixin {
   final SyllableService _syllableService = SyllableService();
   final RhymeService _rhymeService = RhymeService();
-  final FileService _fileService = FileService();
+  late final FileService _fileService;
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -56,6 +56,10 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+
+    _fileService = FileService(
+      syncProvider: Provider.of<SyncProvider>(context, listen: false),
+    );
 
     // Initialize shimmer animation for selected word
     _shimmerController = AnimationController(

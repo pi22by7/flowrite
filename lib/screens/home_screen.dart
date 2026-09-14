@@ -22,7 +22,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final FileService _fileService = FileService();
+  late final FileService _fileService;
   List<WritingFile> _files = [];
   SortOrder _currentSortOrder = SortOrder.lastModified;
   StreamSubscription? _cloudSubscription;
@@ -45,6 +45,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.didChangeDependencies();
     if (!_isInitialized) {
       _isInitialized = true;
+      _fileService = FileService(
+        syncProvider: Provider.of<SyncProvider>(context, listen: false),
+      );
       _loadFiles();
       _setupCloudSync();
     }
@@ -103,9 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // Always refresh local files first
       await _loadFiles();
 
-      // Only sync to cloud if signed in
-      if (syncProvider.isSignedIn) {
-        debugPrint('User is signed in, syncing pending changes');
+      // Only sync to cloud if the active backend is configured
+      if (syncProvider.isCloudConfigured) {
+        debugPrint('Cloud backend configured, syncing pending changes');
         await syncProvider.checkPendingSyncs();
         // Reload files after cloud sync
         await _loadFiles();
@@ -117,10 +120,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       } else {
-        debugPrint('User not signed in, local sync only');
+        debugPrint('Cloud backend not configured, local sync only');
         scaffoldMessenger.showSnackBar(
           const SnackBar(
-            content: Text('Local files refreshed (sign in for cloud sync)'),
+            content: Text('Local files refreshed (connect cloud sync in Settings)'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -252,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SyncStatus(),
+              SyncStatus(onOpenSettings: () => _showSettings(context)),
               const SizedBox(width: 8),
               _buildIconButton(
                 Icons.sync_rounded,

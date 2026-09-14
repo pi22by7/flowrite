@@ -33,6 +33,11 @@ class SyncProvider extends ChangeNotifier {
   SyncBackendType _backendType = SyncBackendType.supabase;
   SyncBackendType get backendType => _backendType;
 
+  /// The live backend instance for the currently selected [backendType].
+  /// Always read this fresh (don't cache it) - it's replaced whenever the
+  /// user switches backends in Settings.
+  SyncBackend get activeBackend => _backend;
+
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
@@ -42,6 +47,21 @@ class SyncProvider extends ChangeNotifier {
   User? get currentUser => _auth.currentUser;
   bool get isSignedIn => _auth.isSignedIn;
   String get userEmail => _auth.userEmail;
+
+  /// Whether the *active* backend is configured/signed in - unlike
+  /// [isSignedIn] (which only reflects Google/Supabase auth), this is
+  /// correct for whichever backend the user picked in Settings.
+  bool get isCloudConfigured {
+    switch (_backendType) {
+      case SyncBackendType.none:
+        return false;
+      case SyncBackendType.supabase:
+        return _auth.isSignedIn;
+      case SyncBackendType.webdav:
+      case SyncBackendType.icloud:
+        return _backend.isSignedIn;
+    }
+  }
   Timer? _syncTimer;
   StreamSubscription<SyncStatus>? _statusSubscription;
 
@@ -66,13 +86,15 @@ class SyncProvider extends ChangeNotifier {
     }
   }
 
-  /// Switches to a different sync backend: clears the outgoing backend's
-  /// local sync bookkeeping, disposes it, and rebuilds `_backend` for [type].
-  /// Remote data is not migrated between backends.
+  /// Switches to a different sync backend and rebuilds `_backend` for [type].
+  /// Deliberately does NOT clear the sync queue: it's a single backend-agnostic
+  /// list of "this local file has unsynced changes" entries (see
+  /// SyncQueueService), so any files queued before the switch still need to
+  /// reach the new backend. Remote data already synced to the old backend is
+  /// not migrated - only pending, not-yet-synced local edits carry over.
   Future<void> switchBackend(SyncBackendType type) async {
     if (type == _backendType) return;
 
-    await _backend.clearSyncData();
     _statusSubscription?.cancel();
     _backend.dispose();
 
@@ -80,6 +102,13 @@ class SyncProvider extends ChangeNotifier {
     _backendType = type;
     _listenToBackendStatus();
 
+    notifyListeners();
+    // isSignedIn only reflects credentials once they've been loaded at least
+    // once (e.g. WebDAV's cached config) - await that warm-up (rather than
+    // firing it and forgetting) so callers that await switchBackend(), like
+    // the persisted-backend restore on startup, see the real signed-in state
+    // once this returns. Also replays anything still queued.
+    await _backend.processSyncQueue();
     notifyListeners();
   }
 

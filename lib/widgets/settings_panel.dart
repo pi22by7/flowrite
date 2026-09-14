@@ -852,7 +852,9 @@ class _SettingsPanelState extends State<SettingsPanel> {
 
   Future<void> _exportCurrentFiles(BuildContext context, {required bool all}) async {
     try {
-      final fileService = FileService();
+      final fileService = FileService(
+        syncProvider: Provider.of<SyncProvider>(context, listen: false),
+      );
       final files = await fileService.getFiles(context);
       if (files.isEmpty) {
         if (!context.mounted) return;

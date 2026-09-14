@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
 import '../models/sync_operation.dart';
 import '../providers/sync_provider.dart';
-import '../services/backends/supabase_sync_backend.dart';
 import '../services/sync_backend.dart';
 import '../services/storage_service.dart';
 
 class FileService {
-  final SyncBackend _cloudSync;
+  final SyncProvider _syncProvider;
   late final StorageService _storage;
   static bool _migrationCompleted = false;
 
-  FileService({SyncBackend? cloudSync})
-      : _cloudSync = cloudSync ?? SupabaseSyncBackend() {
+  /// Always read the live backend fresh from [_syncProvider] rather than
+  /// caching it - otherwise a mid-session backend switch in Settings would
+  /// leave this class syncing against a stale, disposed backend.
+  SyncBackend get _cloudSync => _syncProvider.activeBackend;
+
+  FileService({required SyncProvider syncProvider}) : _syncProvider = syncProvider {
     _storage = StorageService.create();
   }
 
   Future<List<WritingFile>> getFiles(BuildContext context) async {
-    final syncProvider = Provider.of<SyncProvider>(context, listen: false);
-    final isSignedIn = syncProvider.isSignedIn;
+    final isConfigured = _syncProvider.isCloudConfigured;
 
     try {
       // Migrate old files if they exist (only needs to run once)
@@ -32,15 +33,15 @@ class FileService {
       final localFiles = await _getLocalFiles();
       debugPrint('Found ${localFiles.length} local files');
 
-      // If offline or not signed in, return local files only
+      // If offline or the active backend isn't configured, return local files only
       final isOnline = await _cloudSync.isOnline;
-      if (!isOnline || !isSignedIn) {
+      if (!isOnline || !isConfigured) {
         debugPrint(
-            'Returning local files only (offline: ${!isOnline}, not signed in: ${!isSignedIn})');
+            'Returning local files only (offline: ${!isOnline}, not configured: ${!isConfigured})');
         return localFiles;
       }
 
-      // If online and signed in, try to get cloud files and merge
+      // If online and configured, try to get cloud files and merge
       try {
         final cloudFiles = await _cloudSync.getFilesStream().first.timeout(
           const Duration(seconds: 10),
