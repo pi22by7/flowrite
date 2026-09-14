@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-09-14
+
+### ✨ Added
+
+- **Pluggable Sync Backends**: Sync is now built on a single `SyncBackend` interface instead of three separate Supabase-coupled implementations - backends are swappable and more can be added later
+- **WebDAV Sync**: Connect to NextCloud, ownCloud, or any WebDAV server with a server URL, username, and app password (no OAuth needed)
+- **Configurable Save Location**: Change where local files are stored, with safe copy-verify-then-delete migration
+- **Export**: Export a single file or all files as a zip via the system share sheet
+
+### 🔧 Fixed
+
+- Switching sync backends in Settings no longer wipes the shared sync queue - files queued before a switch now actually reach the new backend instead of being silently dropped
+- Immediate on-save sync now goes through the actively selected backend instead of a hardcoded Supabase instance, so WebDAV (and future backends) sync on save, not just on the periodic retry timer
+- The cloud sync button and manual-sync toast now reflect whichever backend is selected (WebDAV/Supabase/none) instead of always assuming Google sign-in
+- Rename overwriting fresher content with a stale read during a concurrent autosave
+- Cloud/local merge silently dropping near-simultaneous edits within a 1s grace window
+- In-flight save clearing the unsaved-changes flag against edits made while it was saving
+- FileService's pending-changes queue was never drained by anything
+- Stopped logging full OAuth callback URLs/tokens in debug builds
+
+### 🛠️ Infrastructure
+
+- Upgraded Flutter/Dart dependencies to latest, including a Gradle 9, AGP 9, Kotlin 2.4, and NDK 28 toolchain bump
+
 ## [4.0.0] - 2025-11-04
 
 ### ✨ Added
