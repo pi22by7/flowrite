@@ -3,6 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/writing_file.dart';
+import '../models/lyric_document.dart';
+import '../widgets/lyric_chord_layer.dart';
+import '../widgets/chord_visibility_toggle.dart';
+import '../widgets/lyric_text_field.dart';
+import '../utils/markdown_headings.dart';
 import '../models/sync_operation.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
@@ -26,7 +31,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   final SyllableService _syllableService = SyllableService();
   final RhymeService _rhymeService = RhymeService();
   late final FileService _fileService;
-  final TextEditingController _controller = TextEditingController();
+  final LyricTextEditingController _controller = LyricTextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final FocusNode _titleFocusNode = FocusNode();
@@ -39,6 +44,9 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   bool _isAutoSaving = false;
   String _originalTitle = '';
   String _originalContent = '';
+  LyricDocument _lyrics = const LyricDocument('');
+  LyricChord? _editingChord;
+  String _chordDraft = '';
   Timer? _autosaveTimer;
   Future<void>? _currentSaveOperation;
   // String _saveStatus = '';
@@ -73,6 +81,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
       ),
     );
 
+    _controller.spanBuilder = _buildColoredTextSpan;
     _loadContent();
     _controller.addListener(_onTextChanged);
     _controller.addListener(_onSelectionChanged);
@@ -126,18 +135,22 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
       final lines = content.split('\n');
       if (lines.isNotEmpty && lines[0].startsWith('# ')) {
         title = lines[0].substring(2).trim(); // Remove '# ' prefix
-        body = lines.length > 1 ? lines.sublist(1).join('\n').trimLeft() : '';
+        body = lines.length > 1 ? lines.sublist(1).join('\n') : '';
       }
     }
 
+    if (!mounted) return;
+    _lyrics = LyricDocument.decode(body);
     _titleController.text = title;
-    _controller.text = body;
+    _controller.text = _lyrics.text;
     _originalTitle = title;
-    _originalContent = body;
+    _originalContent = _lyrics.encode();
     _updateSyllableCounts();
   }
 
   void _onTextChanged() {
+    if (_lyrics.text != _controller.text) _editingChord = null;
+    _lyrics = _controller.updateDocument(_lyrics);
     _rhymeService.reset();
     _updateSyllableCounts();
     _updateCurrentLine();
@@ -153,7 +166,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   void _checkForChanges() {
     setState(() {
       _hasUnsavedChanges = _titleController.text != _originalTitle ||
-          _controller.text != _originalContent;
+          _lyrics.encode() != _originalContent;
     });
   }
 
@@ -174,7 +187,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     setState(() {
       _syllableCounts = _controller.text
           .split('\n')
-          .map((line) => _syllableService.countSyllablesInText(line))
+          .map((line) => isMarkdownHeading(line) ? 0 : _syllableService.countSyllablesInText(line))
           .toList();
     });
   }
@@ -347,21 +360,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     return offsets;
   }
 
-  TextSpan _buildColoredTextSpan(String text, TextStyle baseStyle) {
-    final List<TextSpan> spans = [];
-    final lines = text.split('\n');
-
-    for (int i = 0; i < lines.length; i++) {
-      if (i > 0) {
-        spans.add(TextSpan(text: '\n', style: baseStyle));
-      }
-
-      final lineSpans = _colorWordsInLine(lines[i], baseStyle);
-      spans.addAll(lineSpans);
-    }
-
-    return TextSpan(children: spans);
-  }
+  TextSpan _buildColoredTextSpan(String text, TextStyle baseStyle) =>
+      buildLyricMarkdownSpan(text, baseStyle, lyricLineBuilder: _colorWordsInLine);
 
   List<TextSpan> _colorWordsInLine(String line, TextStyle baseStyle) {
     final List<TextSpan> spans = [];
@@ -435,31 +435,13 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
           final colorScheme = theme.colorScheme;
           final settings = Provider.of<SettingsProvider>(context);
 
-          final textStyle = TextStyle(
+          final textStyle = lyricLayoutStyle(TextStyle(
             fontFamily: settings.fontFamily,
             fontSize: settings.fontSize,
             height: settings.lineHeight,
             color: colorScheme.onSurface,
             letterSpacing: 0.2,
-          );
-
-          const syllableCountsWidth = 50.0;
-          const paddingHorizontal = 16.0 * 2;
-          final textAreaWidth =
-              constraints.maxWidth - syllableCountsWidth - paddingHorizontal;
-
-          final textPainter = TextPainter(
-            text: _buildColoredTextSpan(_controller.text, textStyle),
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.start,
-            textScaler: MediaQuery.textScalerOf(context),
-            textHeightBehavior: const TextHeightBehavior(),
-            locale: Localizations.localeOf(context),
-            maxLines: null,
-          );
-
-          textPainter.layout(maxWidth: textAreaWidth);
-          final lineOffsets = _getLineOffsets(textPainter);
+          ));
 
           return Scaffold(
             backgroundColor: Colors.transparent,
@@ -501,9 +483,6 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                                 textStyle,
                                 colorScheme,
                                 settings,
-                                textAreaWidth,
-                                paddingHorizontal,
-                                lineOffsets,
                               ),
                             ),
                           ],
@@ -539,107 +518,128 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
         color: colorScheme.surface.withValues(alpha: 0.7),
         // Remove bottom border for cleaner look
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _handleBackPress(),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  // Ghost-style: nearly invisible
-                  border: Border.all(
-                    color: colorScheme.outline.withValues(alpha: 0.06),
-                  ),
-                  color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.3),
-                ),
-                child: Icon(
-                  Icons.arrow_back_rounded,
-                  size: 20,
-                  // Ghost-style: more subtle
-                  color: colorScheme.onSurface.withValues(alpha: 0.4),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Edit Song',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Consumer<SyncProvider>(
-                  builder: (context, syncProvider, child) {
-                    String statusText = '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}';
-
-                    // Add sync status if signed in
-                    if (syncProvider.isSignedIn) {
-                      switch (syncProvider.syncStatus) {
-                        case SyncStatus.syncing:
-                          statusText += ' • Syncing...';
-                          break;
-                        case SyncStatus.pending:
-                          statusText += ' • Pending sync';
-                          break;
-                        case SyncStatus.error:
-                          statusText += ' • Sync error';
-                          break;
-                        case SyncStatus.synced:
-                          statusText += ' • Synced';
-                          break;
-                        default:
-                          break;
-                      }
-                    }
-
-                    return Text(
-                      statusText,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildHeaderButton(
-                icon: Icons.menu_book_rounded,
-                onPressed: _showRhymePopupManually,
-                colorScheme: colorScheme,
-                isHighlighted: _controller.selection.isValid && !_controller.selection.isCollapsed,
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _handleBackPress(),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      // Ghost-style: nearly invisible
+                      border: Border.all(
+                        color: colorScheme.outline.withValues(alpha: 0.06),
+                      ),
+                      color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.3),
+                    ),
+                    child: Icon(
+                      Icons.arrow_back_rounded,
+                      size: 20,
+                      // Ghost-style: more subtle
+                      color: colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
-              _buildHeaderButton(
-                icon: Icons.settings_rounded,
-                onPressed: () => _showSettings(context),
-                colorScheme: colorScheme,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Edit Song',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Consumer<SyncProvider>(
+                      builder: (context, syncProvider, child) {
+                        String statusText = '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}';
+
+                        // Add sync status if signed in
+                        if (syncProvider.isSignedIn) {
+                          switch (syncProvider.syncStatus) {
+                            case SyncStatus.syncing:
+                              statusText += ' • Syncing...';
+                              break;
+                            case SyncStatus.pending:
+                              statusText += ' • Pending sync';
+                              break;
+                            case SyncStatus.error:
+                              statusText += ' • Sync error';
+                              break;
+                            case SyncStatus.synced:
+                              statusText += ' • Synced';
+                              break;
+                            default:
+                              break;
+                          }
+                        }
+
+                        return Text(
+                          statusText,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-              _buildHeaderButton(
-                icon: (_isSaving || _isAutoSaving)
-                    ? Icons.sync_rounded
-                    : _hasUnsavedChanges
-                        ? Icons.circle_outlined
-                        : Icons.check_rounded,
-                onPressed: (_isSaving || _isAutoSaving) ? null : _saveContent,
-                colorScheme: colorScheme,
-                isLoading: _isSaving || _isAutoSaving,
-                showBadge: _hasUnsavedChanges && !_isAutoSaving,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Tooltip(
+                    message: 'Attach chord to lyric',
+                    child: _buildHeaderButton(
+                      icon: Icons.music_note_rounded,
+                      onPressed: _controller.selection.isValid ? () => _editChord() : null,
+                      colorScheme: colorScheme,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeaderButton(
+                    icon: Icons.menu_book_rounded,
+                    onPressed: _showRhymePopupManually,
+                    colorScheme: colorScheme,
+                    isHighlighted: _controller.selection.isValid && !_controller.selection.isCollapsed,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeaderButton(
+                    icon: Icons.settings_rounded,
+                    onPressed: () => _showSettings(context),
+                    colorScheme: colorScheme,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeaderButton(
+                    icon: (_isSaving || _isAutoSaving)
+                        ? Icons.sync_rounded
+                        : _hasUnsavedChanges
+                            ? Icons.circle_outlined
+                            : Icons.check_rounded,
+                    onPressed: (_isSaving || _isAutoSaving) ? null : _saveContent,
+                    colorScheme: colorScheme,
+                    isLoading: _isSaving || _isAutoSaving,
+                    showBadge: _hasUnsavedChanges && !_isAutoSaving,
+                  ),
+                ],
               ),
             ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ChordVisibilityToggle(
+              value: settings.showChords,
+              onChanged: _setChordVisibility,
+            ),
           ),
         ],
       ),
@@ -721,9 +721,6 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     TextStyle textStyle,
     ColorScheme colorScheme,
     SettingsProvider settings,
-    double textAreaWidth,
-    double paddingHorizontal,
-    List<Map<String, dynamic>> lineOffsets,
   ) {
     final titleStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontFamily: 'Spectral',
@@ -734,7 +731,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: Center(
+      child: Align(
+        alignment: Alignment.topCenter,
         // Center the content horizontally
         child: Container(
           // Max width for centered composition (journal-like)
@@ -746,8 +744,9 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              // Title field
-              TextField(
+              // Song title and section formatting.
+              Row(children: [
+              Expanded(child: TextField(
                 controller: _titleController,
                 focusNode: _titleFocusNode,
                 style: titleStyle,
@@ -763,7 +762,20 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                 maxLines: 1,
                 textInputAction: TextInputAction.next,
                 onSubmitted: (_) => _focusNode.requestFocus(),
+              )),
+              PopupMenuButton<String>(
+                tooltip: 'Add section heading',
+                icon: Icon(Icons.title_rounded, color: colorScheme.primary),
+                onSelected: _insertHeading,
+                itemBuilder: (context) => [
+                  for (final section in ['Verse', 'Chorus', 'Pre-Chorus', 'Bridge', 'Intro', 'Outro'])
+                    PopupMenuItem(value: section, child: Text(section)),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(value: '_format', child: Text('Turn current line into heading')),
+                  const PopupMenuItem(value: '_remove', child: Text('Remove heading formatting')),
+                ],
               ),
+              ]),
 
               // Ornamental divider - poetic and elegant
               Container(
@@ -811,69 +823,66 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
               ),
 
               // Body content editor
-              Stack(
+              LayoutBuilder(builder: (context, bodyConstraints) {
+                final lyricWidth = max(0.0, bodyConstraints.maxWidth - 50);
+                final scaler = MediaQuery.textScalerOf(context);
+                final hasChords = settings.showChords && (_lyrics.chords.isNotEmpty || _editingChord != null);
+                final painter = TextPainter(
+                  text: _buildColoredTextSpan(_controller.text, lyricLayoutStyle(textStyle, hasChords: hasChords, textScaler: scaler)),
+                  textDirection: TextDirection.ltr,
+                  textScaler: MediaQuery.textScalerOf(context),
+                  strutStyle: lyricStrutStyle(textStyle, hasChords: hasChords, textScaler: scaler),
+                )..layout(maxWidth: lyricParagraphWidth(lyricWidth));
+                final lineOffsets = _getLineOffsets(painter);
+                final metrics = painter.computeLineMetrics();
+                final inset = hasChords && metrics.isNotEmpty
+                    ? lyricChordTopInset(metrics.first.baseline, textStyle, scaler) : 0.0;
+                for (final line in lineOffsets) {
+                  line['offset'] = (line['offset'] as double) + inset;
+                }
+                painter.dispose();
+                return Stack(
                 children: [
                   SizedBox(
-                    width: textAreaWidth + paddingHorizontal,
-                    child: Stack(
-                      children: [
-                        // Base TextField for selection and editing
-                        TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          keyboardType: TextInputType.multiline,
-                          maxLines: null,
-                          style: textStyle.copyWith(
-                            // Make text transparent only when rhyme coloring is visible (not in focus mode)
-                            color: (settings.showRhymes && !settings.focusMode) ? Colors.transparent : textStyle.color,
-                          ),
-                          decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: 'Write your song lyrics here...',
-                            hintStyle: textStyle.copyWith(
-                              color: colorScheme.onSurface.withValues(alpha: 0.4),
-                            ),
-                            contentPadding: EdgeInsets.zero,
-                            isDense: true,
-                          ),
-                          cursorColor: colorScheme.primary,
-                          selectionControls: materialTextSelectionControls,
-                          enableInteractiveSelection: true,
-                          contextMenuBuilder: (context, editableTextState) {
-                            return AdaptiveTextSelectionToolbar.editableText(
-                              editableTextState: editableTextState,
-                            );
-                          },
-                          strutStyle: StrutStyle(
-                            fontSize: textStyle.fontSize,
-                            height: textStyle.height,
-                            forceStrutHeight: true,
-                          ),
-                        ),
-                        
-                        // Rhyme coloring overlay (pointer events disabled)
-                        if (_controller.text.isNotEmpty && settings.showRhymes && !settings.focusMode)
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: AnimatedBuilder(
-                                animation: _shimmerAnimation,
-                                builder: (context, child) {
-                                  return RichText(
-                                    text: _buildColoredTextSpan(_controller.text, textStyle),
-                                    textDirection: TextDirection.ltr,
-                                    textAlign: TextAlign.left,
-                                    textScaler: MediaQuery.textScalerOf(context),
-                                    strutStyle: StrutStyle(
-                                      fontSize: textStyle.fontSize,
-                                      height: textStyle.height,
-                                      forceStrutHeight: true,
-                                    ),
-                                  );
+                    width: lyricWidth,
+                    child: LyricChordLayer(
+                      visible: settings.showChords,
+                      document: _lyrics,
+                      style: textStyle,
+                      onEdit: (chord) => _editChord(chord),
+                      onMove: _moveChord,
+                      editingChord: _editingChord,
+                      onCommit: _commitChord,
+                      onDraftChanged: (label) => _chordDraft = label,
+                      onCancel: () => setState(() => _editingChord = null),
+                      child: LyricTextField(
+                        hasChords: hasChords,
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        style: textStyle,
+                        animation: _showRhymePopup ? _shimmerAnimation : null,
+                        contextMenuBuilder: (context, editableTextState) =>
+                          AdaptiveTextSelectionToolbar.buttonItems(
+                            anchors: editableTextState.contextMenuAnchors,
+                            buttonItems: [
+                              ...editableTextState.contextMenuButtonItems,
+                              ContextMenuButtonItem(
+                                label: 'Section heading',
+                                onPressed: () {
+                                  editableTextState.hideToolbar();
+                                  _insertHeading('_format');
                                 },
                               ),
-                            ),
+                              ContextMenuButtonItem(
+                                label: 'Attach chord',
+                                onPressed: () {
+                                  editableTextState.hideToolbar();
+                                  _editChord();
+                                },
+                              ),
+                            ],
                           ),
-                      ],
+                      ),
                     ),
                   ),
                   if (settings.showSyllables && !settings.focusMode)
@@ -889,8 +898,9 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
-                            highlightColor:
-                                colorScheme.primary.withValues(alpha: 0.05),
+                            highlightColor: !hasChords
+                                ? colorScheme.primary.withValues(alpha: 0.05)
+                                : Colors.transparent,
                             activeTextColor: colorScheme.primary,
                             inactiveTextColor:
                                 colorScheme.onSurface.withValues(alpha: 0.3),
@@ -900,13 +910,72 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                       ),
                     ),
                 ],
-              ),
+              );
+              }),
             ],
           ),
         ),
       ),
     ),
     );
+  }
+
+  void _setChordVisibility(bool visible) {
+    final chord = _editingChord;
+    if (!visible && chord != null) {
+      _commitChord(chord, _chordDraft.trim());
+    }
+    context.read<SettingsProvider>().setShowChords(visible);
+  }
+
+  void _insertHeading(String option) {
+    _controller.value = option == '_format' || option == '_remove'
+        ? formatSectionHeading(_controller.value, remove: option == '_remove')
+        : insertSectionHeading(_controller.value, option);
+    _focusNode.requestFocus();
+  }
+
+  void _chordsChanged(List<LyricChord> chords) {
+    setState(() => _lyrics = LyricDocument(_controller.text, chords));
+    _checkForChanges();
+    _startAutosaveTimer();
+  }
+
+  void _moveChord(LyricChord chord, int offset) {
+    _chordsChanged([
+      for (final existing in _lyrics.chords)
+        if (existing != chord && existing.start != offset) existing,
+      LyricChord(offset, LyricDocument.wordEnd(_controller.text, offset), chord.label),
+    ]);
+  }
+
+  void _editChord([LyricChord? chord]) {
+    final selection = _controller.selection;
+    if (chord == null && !selection.isValid) return;
+    var start = chord?.start ?? selection.start;
+    if (chord == null && !selection.isCollapsed) {
+      while (start < selection.end && RegExp(r'\s').hasMatch(_controller.text[start])) {
+        start++;
+      }
+    }
+    final snapshot = _controller.text;
+    if (start >= snapshot.length || RegExp(r'\s').hasMatch(snapshot[start])) return;
+    chord ??= _lyrics.chords.where((c) => c.start == start).firstOrNull;
+    context.read<SettingsProvider>().setShowChords(true);
+    setState(() {
+      _editingChord = chord ?? LyricChord(start, LyricDocument.wordEnd(snapshot, start), '');
+      _chordDraft = _editingChord!.label;
+    });
+  }
+
+  void _commitChord(LyricChord chord, String label) {
+    if (_editingChord != chord) return;
+    setState(() => _editingChord = null);
+    _chordsChanged([
+      for (final existing in _lyrics.chords)
+        if (existing.start != chord.start) existing,
+      if (label.isNotEmpty) LyricChord(chord.start, chord.end, label),
+    ]);
   }
 
   void _showSettings(BuildContext context) {
@@ -954,7 +1023,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
 
     try {
       final title = _titleController.text.trim();
-      final body = _controller.text;
+      final body = _lyrics.encode();
 
       // Combine title and body content with markdown-style header
       String combinedContent = body;
@@ -980,14 +1049,14 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
         // written (the next autosave won't fire because _hasUnsavedChanges
         // would already read false).
         final editedDuringSave = _titleController.text.trim() != title ||
-            _controller.text != body;
+            _lyrics.encode() != body;
 
         if (editedDuringSave) {
           _startAutosaveTimer();
         } else {
           setState(() {
             _originalTitle = _titleController.text;
-            _originalContent = _controller.text;
+            _originalContent = body;
             _hasUnsavedChanges = false;
           });
         }
@@ -1094,7 +1163,7 @@ class _SyllableCountPainter extends CustomPainter {
       final height = lineInfo['height'] as double;
 
       // Draw subtle glow for current line (not a solid block)
-      if (i == currentLine) {
+      if (i == currentLine && highlightColor.a > 0) {
         // Create a soft glow effect with gradient
         final glowRect = RRect.fromRectAndRadius(
           Rect.fromLTWH(-10, offsetY - 2, size.width + 20, height + 4),
@@ -1118,6 +1187,7 @@ class _SyllableCountPainter extends CustomPainter {
 
       // Draw visual dots for syllable count
       final syllableCount = syllableCounts[i];
+      if (syllableCount == 0) continue;
       final isActive = i == currentLine;
       final dotColor = isActive ? activeTextColor : inactiveTextColor;
 

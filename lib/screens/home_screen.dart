@@ -5,6 +5,7 @@ import '../providers/sync_provider.dart';
 import '../providers/theme_provider.dart';
 import '../utils/inspiration.dart';
 import '../utils/time_formatting.dart';
+import '../utils/song_preview.dart';
 import '../widgets/file_dialog.dart';
 import '../widgets/settings_panel.dart';
 import '../widgets/sync_status.dart';
@@ -594,24 +595,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 future: file.readContent(),
                 builder: (context, snapshot) {
                   if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                    // Extract first line or two for preview
-                    final content = snapshot.data!;
-                    final lines = content.split('\n');
-
-                    // Skip title line if it exists, get body preview
-                    String preview = '';
-                    int startLine = 0;
-
-                    // If there are multiple lines, skip the first (title) and get body
-                    if (lines.length > 1) {
-                      startLine = 1;
-                      // Get first 1-2 non-empty body lines
-                      final bodyLines = lines.skip(startLine)
-                          .where((line) => line.trim().isNotEmpty)
-                          .take(2)
-                          .toList();
-                      preview = bodyLines.join(' ');
-                    }
+                    final preview = songPreview(snapshot.data!);
 
                     if (preview.isNotEmpty) {
                       return Padding(
