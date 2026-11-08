@@ -11,6 +11,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _lineHeightKey = 'lineHeight';
   static const String _showSyllablesKey = 'showSyllables';
   static const String _showRhymesKey = 'showRhymes';
+  static const String _showChordsKey = 'showChords';
   static const String _focusModeKey = 'focusMode';
   static const String _syllableDotPatternKey = 'syllableDotPattern';
   static const String _customSavePathKey = 'customSavePath';
@@ -18,15 +19,20 @@ class SettingsProvider extends ChangeNotifier {
 
   bool _showSyllables = true;
   bool _showRhymes = true;
+  bool? _showChords = true;
   bool _focusMode = false;
   bool _syllableDotPattern = true;
   String _customSavePath = '';
-  SyncBackendType _syncBackendType = SyncBackendType.supabase;
+  SyncBackendType _syncBackendType = SyncBackendType.none;
 
   bool get showSyllables => _showSyllables;
   bool get showRhymes => _showRhymes;
+  // A provider created before this preference existed can survive web hot
+  // reload with an unset backing field. Older sessions should show chords.
+  bool get showChords => _showChords ?? true;
   bool get focusMode => _focusMode;
   bool get syllableDotPattern => _syllableDotPattern;
+
   /// Empty string means the default app-documents location is used.
   String get customSavePath => _customSavePath;
   SyncBackendType get syncBackendType => _syncBackendType;
@@ -78,14 +84,23 @@ class SettingsProvider extends ChangeNotifier {
     _lineHeight = prefs.getDouble(_lineHeightKey) ?? 1.6;
     _showSyllables = prefs.getBool(_showSyllablesKey) ?? true;
     _showRhymes = prefs.getBool(_showRhymesKey) ?? true;
+    _showChords = prefs.getBool(_showChordsKey) ?? true;
     _focusMode = prefs.getBool(_focusModeKey) ?? false;
     _syllableDotPattern = prefs.getBool(_syllableDotPatternKey) ?? true;
     _customSavePath = prefs.getString(_customSavePathKey) ?? '';
     _syncBackendType = SyncBackendType.values.firstWhere(
       (t) => t.name == prefs.getString(_syncBackendTypeKey),
-      orElse: () => SyncBackendType.supabase,
+      orElse: () => SyncBackendType.none,
     );
     notifyListeners();
+  }
+
+  Future<void> setShowChords(bool value) async {
+    if (_showChords == value) return;
+    _showChords = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showChordsKey, value);
   }
 
   Future<void> setSyncBackendType(SyncBackendType type) async {

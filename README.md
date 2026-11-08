@@ -12,9 +12,12 @@
 [![Release](https://img.shields.io/github/v/release/pi22by7/flowrite?style=for-the-badge&logo=github)](https://github.com/pi22by7/flowrite/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/release.yml?style=for-the-badge&logo=github-actions)](https://github.com/pi22by7/flowrite/actions/workflows/release.yml)
 
-**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v4.0.0** | **Flutter: 3.32.6**
+**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v4.0.0** | **Flutter: 3.47.9**
 
 A songwriter's sanctuary. Write lyrics anywhere, sync everywhere, lose nothing.
+
+Run Flowrite on your own Linux server with Docker Compose, without Supabase or
+Google sign-in. See the [self-hosting and offline setup guide](docs/SELF_HOSTING.md).
 
 ## 💖 Why This Exists
 
@@ -77,10 +80,16 @@ This is my contribution to that vision.
 Warm cream and charcoal palette. Time-aware greetings. Centered composition. Breathing button animation. Focus mode to hide everything but your words.
 
 **Your Work, Always Safe**
-Local-first architecture saves instantly. Sync happens quietly in background. Works offline, syncs when you're back. Smart retry with exponential backoff. Multi-device conflict resolution. Zero data loss, ever.
+Local-first architecture saves instantly. Sync happens quietly in background. Works offline, syncs when you're back. Smart retry with exponential backoff. Multi-device conflict resolution. Pending edits are retried after reconnecting.
 
 **Songwriter's Tools**
 Visual syllable patterns (dots, triangles, hexagons) that adapt to 1-12 syllables. Watercolor rhyme highlighting in 15 soft colors. CMU Pronouncing Dictionary with 126K+ words. Poetic rhyme categories: True Echoes, Gentle Echoes, Close Harmonies.
+
+**Chords Attached to Lyrics**
+Highlight a lyric and choose **Attach chord** from the selection menu, or use the music note button at the cursor. Chords appear above the lyrics and follow them as you edit. Drag a chord onto another word to move it; click to type a chord inline. Press Enter or click elsewhere to save, Escape to cancel, or clear the chord to remove it. Deleting the attached word removes its chord. Use the top-right **Chords** switch to hide or show chords; hidden chords remain attached as you edit, and their extra spacing collapses. The app remembers your choice. Songs with chords save and export as marked ChordPro text (`[Am]lyrics`), keeping chords together with the song during sync.
+
+**Song Sections**
+Type Markdown headings such as `## Verse 1`, `## Chorus`, or `## Bridge`. Headings display as bold section names, with the `#` markers hidden in the editor and preserved when saved or exported. Use the **Add section heading** button beside the song title to insert common sections, format the current line, or remove heading formatting. Section labels are excluded from rhyme colors and syllable counts.
 
 **Just Works**
 3-second autosave. Material 3 with dynamic color. Adaptive theming. Premium typography (34pt/18pt, 1.65 line height). File sorting and organization. Secure Google Sign-in. No ads, no paywalls.
@@ -93,9 +102,9 @@ Pre-built releases for Android, Linux, Windows, and macOS:
 
 ## 🚀 Quick Start
 
-**Users**: Download, open, write. Sign in with Google to sync across devices.
+**Users**: Download, open, write. Optionally connect WebDAV or Supabase to sync across devices.
 
-**Developers**: Clone, configure `.env` with Supabase credentials, run `flutter pub get && flutter run`.
+**Developers**: Clone, copy `.env.example` to `.env`, run `flutter pub get && flutter run`.
 
 See [setup details](#for-developers) below.
 
@@ -104,8 +113,7 @@ See [setup details](#for-developers) below.
 ### Prerequisites
 
 - Flutter SDK (latest stable)
-- Supabase project (for cloud features)
-- Google OAuth configured in Supabase
+- Optional: a WebDAV server, or a Supabase project with Google OAuth, for sync
 - Android Studio or VS Code
 
 ### Setup
@@ -113,7 +121,7 @@ See [setup details](#for-developers) below.
 ```bash
 git clone https://github.com/pi22by7/flowrite.git
 cd flowrite
-cp .env.example .env  # Add your Supabase/OAuth credentials
+cp .env.example .env  # Cloud credentials are optional
 flutter pub get
 flutter run
 ```
@@ -124,6 +132,26 @@ flutter run
 flutter test                      # Unit tests
 flutter test integration_test/    # Integration tests
 ```
+
+The **Validate all platforms** workflow runs analysis and the shared unit/widget
+tests on pushes and pull requests, and compiles web, Android, iOS Simulator,
+Linux, macOS, and Windows builds. It also supports manual runs in GitHub Actions.
+It uses `.env.example` and does not publish builds or connect to production.
+Android validation uses a debug APK; iOS validation uses an unsigned simulator
+build. These checks do not verify store signing or installation on a device.
+
+Run `flutter doctor -v` and `flutter devices` to check local platform support.
+Android needs the Android SDK and an emulator or connected device. Linux needs
+Clang, CMake, Ninja, and GTK development libraries. iOS/macOS builds require
+macOS with Xcode; Windows builds require Windows with Visual Studio's C++ tools.
+
+Shared widget tests exercise the editor without a native device. Before a
+release, also run the app on each target device/simulator and check selecting
+lyrics, attaching/editing/dragging chords, inserting text before an attached
+word, headers and spaces, chord visibility, and saving/reopening the song and
+dashboard preview. Check phone and desktop widths, light/dark themes, text size,
+rhyme colors, and the full breathing-room range. Native keyboards, touch
+selection, and OS input methods require this additional device testing.
 
 ### Screenshots
 
@@ -190,8 +218,9 @@ All contributions welcome. Beginner-friendly tasks in [TODO.md](TODO.md), from s
 
 ## 🔒 Privacy
 
-- End-to-end encrypted sync
-- Google OAuth for auth
+- Optional sync to your own WebDAV server; use HTTPS for transport encryption
+- Synced document JSON is readable on the server; end-to-end encryption is not implemented
+- Optional Google OAuth when using Supabase
 - Local-first data storage
 - No tracking, no ads
 

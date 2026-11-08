@@ -2,16 +2,47 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../cloud_config.dart';
 
 class AuthService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  static bool _initialized = false;
+  static Future<void>? _initializing;
+  static Future<void> initialize() async {
+    if (_initialized) return;
+    if (!SupabaseConfig.isConfigured) {
+      throw StateError('Configure Supabase before selecting Supabase sync.');
+    }
+    await (_initializing ??= _initialize());
+  }
 
-  User? get currentUser => _supabase.auth.currentUser;
-  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
+  static Future<void> _initialize() async {
+    try {
+      await Supabase.initialize(
+          url: SupabaseConfig.supabaseUrl,
+          publishableKey: SupabaseConfig.supabaseAnonKey);
+      _initialized = true;
+    } finally {
+      _initializing = null;
+    }
+  }
+
+  SupabaseClient get _supabase => Supabase.instance.client;
+
+  void setAutoRefresh(bool enabled) {
+    if (!_initialized) return;
+    if (enabled) {
+      _supabase.auth.startAutoRefresh();
+    } else {
+      _supabase.auth.stopAutoRefresh();
+    }
+  }
+
+  User? get currentUser => _initialized ? _supabase.auth.currentUser : null;
+  Stream<AuthState> get authStateChanges =>
+      _initialized ? _supabase.auth.onAuthStateChange : const Stream.empty();
   bool get isSignedIn => currentUser != null;
   String get userEmail => currentUser?.email ?? '';
   String get userId => currentUser?.id ?? '';
@@ -170,7 +201,7 @@ class AuthService {
   <script>setTimeout(() => { window.close(); }, 2000);</script>
 </body>
 </html>''';
-            
+
             request.response
               ..statusCode = 200
               ..headers.set('Content-Type', 'text/html; charset=utf-8')
@@ -252,7 +283,7 @@ class AuthService {
   </script>
 </body>
 </html>''';
-          
+
           request.response
             ..statusCode = 200
             ..headers.set('Content-Type', 'text/html; charset=utf-8')
@@ -300,15 +331,15 @@ class AuthService {
         if (accessToken != null) {
           debugPrint('Found tokens in fragment, using setSession...');
           // Never log accessToken/refreshToken values themselves.
-          
+
           // Extract refresh token
           final refreshToken = params['refresh_token'];
-          
+
           if (refreshToken != null) {
             debugPrint('Setting session with refresh token...');
             // Use setSession with the refresh token
             final response = await _supabase.auth.setSession(refreshToken);
-            
+
             return response;
           } else {
             throw Exception('Refresh token not found in OAuth response');
@@ -345,17 +376,17 @@ class AuthService {
     debugPrint('Android Client ID: ${SupabaseConfig.androidClientId}');
     debugPrint('iOS Client ID: ${SupabaseConfig.iosClientId}');
 
-    final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+    final googleSignIn = GoogleSignInPlatform.instance;
 
     // Initialize with proper client IDs (required in 7.x)
-    await googleSignIn.initialize(
+    await googleSignIn.init(InitParameters(
       clientId: defaultTargetPlatform == TargetPlatform.iOS
           ? SupabaseConfig.iosClientId
           : defaultTargetPlatform == TargetPlatform.android
               ? SupabaseConfig.androidClientId
               : null,
       serverClientId: SupabaseConfig.webClientId,
-    );
+    ));
 
     // Check if authenticate is supported on this platform
     if (!googleSignIn.supportsAuthenticate()) {
@@ -363,18 +394,19 @@ class AuthService {
     }
 
     debugPrint('Calling googleSignIn.authenticate()...');
-    GoogleSignInAccount googleUser;
+    AuthenticationResults googleUser;
     try {
-      googleUser = await googleSignIn.authenticate();
+      googleUser =
+          await googleSignIn.authenticate(const AuthenticateParameters());
     } catch (e) {
       debugPrint('Google authenticate failed: $e');
       throw Exception('Google sign-in was cancelled by user or failed: $e');
     }
 
-    debugPrint('Google user authenticated: ${googleUser.email}');
+    debugPrint('Google user authenticated: ${googleUser.user.email}');
 
     // Get the authentication details from the signed-in user
-    final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+    final googleAuth = googleUser.authenticationTokens;
 
     debugPrint('Google auth tokens retrieved');
     debugPrint('ID Token length: ${googleAuth.idToken?.length ?? 0}');
@@ -409,7 +441,8 @@ class AuthService {
     try {
       // Sign out from Google on mobile platforms
       if (!_isDesktopOrWeb()) {
-        await GoogleSignIn.instance.disconnect();
+        await GoogleSignInPlatform.instance
+            .disconnect(const DisconnectParams());
       }
 
       // Sign out from Supabase
@@ -439,7 +472,9 @@ class AuthService {
 
   Future<bool> refreshSession() async {
     try {
-      final response = await _supabase.auth.refreshSession();
+      final response = await _supabase.auth
+          .refreshSession()
+          .timeout(const Duration(seconds: 10));
       return response.session != null;
     } catch (e) {
       debugPrint('Error refreshing session: $e');
@@ -451,11 +486,11 @@ class AuthService {
     try {
       final session = _supabase.auth.currentSession;
       if (session == null) return false;
-      
+
       // Check if token is expired (with 5 minute buffer)
       final now = DateTime.now().millisecondsSinceEpoch / 1000;
       final expiresAt = session.expiresAt ?? 0;
-      
+
       return expiresAt > now + 300; // 5 minute buffer
     } catch (e) {
       debugPrint('Error checking session validity: $e');

@@ -6,9 +6,7 @@ import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'providers/theme_provider.dart';
 import 'providers/sync_provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'cloud_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,16 +16,8 @@ void main() async {
     debugPrint = (String? message, {int? wrapWidth}) {};
   }
 
-  // Load environment variables
-  await dotenv.load(fileName: ".env");
-
-  await Supabase.initialize(
-    url: SupabaseConfig.supabaseUrl,
-    publishableKey: SupabaseConfig.supabaseAnonKey,
-    authOptions: const FlutterAuthClientOptions(
-      autoRefreshToken: true,
-    ),
-  );
+  // Cloud configuration is optional; local documents need no account.
+  await dotenv.load(fileName: '.env', isOptional: true);
 
   runApp(
     MultiProvider(
@@ -53,10 +43,11 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             title: 'Flowrite',
             theme: ThemeData.light(),
-            home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+            home: const Scaffold(
+                body: Center(child: CircularProgressIndicator())),
           );
         }
-        
+
         return MaterialApp(
           title: 'Flowrite',
           themeMode: themeProvider.materialThemeMode,

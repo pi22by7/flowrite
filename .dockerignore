@@ -1,0 +1,14 @@
+.git
+.dart_tool
+build
+.env
+.env.*
+!.env.example
+**/selfhost.env
+node_modules
+.agents
+.codex
+.aws
+
+backups
+**/__pycache__

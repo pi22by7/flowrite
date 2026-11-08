@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/writing_file.dart';
+import '../services/sync_queue_service.dart';
 import '../models/sync_operation.dart';
 import '../providers/sync_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/sync_backend.dart';
 import '../services/storage_service.dart';
 
@@ -15,12 +17,15 @@ class FileService {
   /// leave this class syncing against a stale, disposed backend.
   SyncBackend get _cloudSync => _syncProvider.activeBackend;
 
-  FileService({required SyncProvider syncProvider}) : _syncProvider = syncProvider {
+  FileService({required SyncProvider syncProvider})
+      : _syncProvider = syncProvider {
     _storage = StorageService.create();
   }
 
-  Future<List<WritingFile>> getFiles(BuildContext context) async {
+  Future<List<WritingFile>> getFiles(BuildContext context,
+      {bool includeRemote = false}) async {
     final isConfigured = _syncProvider.isCloudConfigured;
+    final backend = _cloudSync;
 
     try {
       // Migrate old files if they exist (only needs to run once)
@@ -34,7 +39,8 @@ class FileService {
       debugPrint('Found ${localFiles.length} local files');
 
       // If offline or the active backend isn't configured, return local files only
-      final isOnline = await _cloudSync.isOnline;
+      if (!includeRemote || !isConfigured) return localFiles;
+      final isOnline = await backend.isOnline;
       if (!isOnline || !isConfigured) {
         debugPrint(
             'Returning local files only (offline: ${!isOnline}, not configured: ${!isConfigured})');
@@ -43,21 +49,17 @@ class FileService {
 
       // If online and configured, try to get cloud files and merge
       try {
-        final cloudFiles = await _cloudSync.getFilesStream().first.timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            debugPrint('Cloud files fetch timed out, returning local files');
-            return <WritingFile>[];
-          },
-        );
-
-        debugPrint('Found ${cloudFiles.length} cloud files');
-
-        // Merge files, preserving local versions when in doubt
-        return await _mergeFiles(cloudFiles, localFiles);
+        await for (final cloudFiles
+            in backend.getFilesStream().timeout(const Duration(seconds: 30))) {
+          if (!identical(backend, _syncProvider.activeBackend)) break;
+          await _mergeFiles(cloudFiles, await _getLocalFiles(), backend);
+          // Supabase is a continuous stream; WebDAV ends after its listing.
+          if (_syncProvider.backendType != SyncBackendType.webdav) break;
+        }
+        return await _getLocalFiles();
       } catch (e) {
         debugPrint('Error getting cloud files: $e, returning local files');
-        return localFiles;
+        return await _getLocalFiles();
       }
     } catch (e) {
       debugPrint('Error getting files: $e');
@@ -74,22 +76,23 @@ class FileService {
   Future<List<WritingFile>> _getLocalFiles() async {
     try {
       final fileIds = await _storage.getAllFileIds();
-      
+
       if (fileIds.isEmpty) {
         debugPrint('No local files found');
         return [];
       }
 
       final files = <WritingFile>[];
-      
+
       for (final id in fileIds) {
         try {
           final content = await _storage.readContent(id);
           final metadata = await _storage.getMetadata(id);
-          
+
+          if (metadata?['deleted'] == true) continue;
           String name = id;
           DateTime lastModified = DateTime.now();
-          
+
           if (metadata != null) {
             name = metadata['name'] ?? id;
             final lastModifiedStr = metadata['lastModified'];
@@ -117,8 +120,8 @@ class FileService {
     }
   }
 
-  Future<List<WritingFile>> _mergeFiles(
-      List<WritingFile> cloudFiles, List<WritingFile> localFiles) async {
+  Future<List<WritingFile>> _mergeFiles(List<WritingFile> cloudFiles,
+      List<WritingFile> localFiles, SyncBackend backend) async {
     final Map<String, WritingFile> mergedFiles = {};
 
     // Add local files first (prioritize local changes)
@@ -129,41 +132,23 @@ class FileService {
       }
     }
 
-    // Only merge cloud files if they're newer or don't exist locally
-    for (var cloudFile in cloudFiles) {
-      if (cloudFile.id.isEmpty) continue; // Skip invalid cloud files
-
-      if (mergedFiles.containsKey(cloudFile.id)) {
-        final localFile = mergedFiles[cloudFile.id]!;
-        // Cloud wins whenever it's strictly newer. A same-device round-trip
-        // save writes the identical lastModified to both sides, so this
-        // never thrashes on its own save - the old 1s grace window only
-        // served to silently drop genuine near-simultaneous edits from a
-        // second device.
-        if (cloudFile.lastModified.isAfter(localFile.lastModified)) {
-          // Save cloud version locally
-          try {
-            await cloudFile.writeContent(cloudFile.content ?? '');
-            mergedFiles[cloudFile.id] = cloudFile;
-            debugPrint(
-                'Using cloud version of file ${cloudFile.id} (${cloudFile.name}) as it\'s newer - saved locally');
-          } catch (e) {
-            debugPrint('Failed to save cloud file locally: $e, keeping local version');
-          }
+    final storage = StorageService.create();
+    for (final cloudFile in cloudFiles) {
+      if (!identical(backend, _syncProvider.activeBackend)) break;
+      if (cloudFile.id.isEmpty) continue;
+      final metadata = await storage.getMetadata(cloudFile.id);
+      // A remote download must never overwrite an edit made while the request
+      // was in flight. The outbox will resolve it during the next upload.
+      if (metadata?['pendingSync'] != null) continue;
+      if (metadata?['deleted'] == true && !cloudFile.isDeleted) continue;
+      final local = mergedFiles[cloudFile.id];
+      if (cloudFile.isDeleted ||
+          local == null ||
+          !local.lastModified.isAfter(cloudFile.lastModified)) {
+        if (!await cloudFile.saveRemote()) continue;
+        if (cloudFile.isDeleted) {
+          mergedFiles.remove(cloudFile.id);
         } else {
-          debugPrint(
-              'Keeping local version of file ${localFile.id} (${localFile.name})');
-        }
-      } else {
-        // File doesn't exist locally, add cloud version and save it locally
-        try {
-          await cloudFile.writeContent(cloudFile.content ?? '');
-          mergedFiles[cloudFile.id] = cloudFile;
-          debugPrint(
-              'Adding cloud-only file ${cloudFile.id} (${cloudFile.name}) - saved locally');
-        } catch (e) {
-          debugPrint('Failed to save cloud-only file locally: $e');
-          // Still add it to the list, but it won't persist across restarts
           mergedFiles[cloudFile.id] = cloudFile;
         }
       }
@@ -172,7 +157,7 @@ class FileService {
     final result = mergedFiles.values.toList();
     debugPrint(
         'Merged files: ${result.length} total (${localFiles.length} local, ${cloudFiles.length} cloud)');
-    return result;
+    return _getLocalFiles();
   }
 
   // Future<void> _syncLocalChanges(List<WritingFile> files) async {
@@ -182,154 +167,43 @@ class FileService {
   // }
 
   Future<WritingFile> createFile(String name) async {
-    try {
-      final file = WritingFile(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+    final file = WritingFile(
+        id: SyncQueueService.newOperation('', SyncOperationType.create).id,
         name: name,
-        content: '',
-      );
-
-      // Always save locally first
-      await file.writeContent('');
-      debugPrint('File created locally: ${file.id}');
-
-      // Try to sync to cloud if signed in and online
-      try {
-        final isOnline = await _cloudSync.isOnline;
-        if (isOnline && _cloudSync.isSignedIn) {
-          final syncSuccess = await _cloudSync.syncFile(file).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () {
-              debugPrint('Cloud sync timed out during file creation');
-              return false;
-            },
-          );
-
-          if (!syncSuccess) {
-            // Queue for retry if the immediate sync fails
-            await _cloudSync.queueFileSync(file, SyncOperationType.create);
-            debugPrint(
-                'File created locally, cloud sync failed - queued for retry');
-          } else {
-            debugPrint('File created and synced to cloud successfully');
-          }
-        } else {
-          // Queue for retry when offline or not signed in
-          await _cloudSync.queueFileSync(file, SyncOperationType.create);
-          debugPrint('File created locally, queued for retry');
-        }
-      } catch (e) {
-        debugPrint('Error during cloud sync during file creation: $e');
-        await _cloudSync.queueFileSync(file, SyncOperationType.create);
-      }
-
-      return file;
-    } catch (e) {
-      debugPrint('Error creating file: $e');
-      throw Exception('Failed to create file: ${e.toString()}');
-    }
+        content: '');
+    await file.writeContent('');
+    _syncProvider.scheduleSync();
+    return file;
   }
 
   Future<(bool, String)> saveFile(WritingFile file, String content) async {
-    bool localSaveSuccess = false;
-    String resultMessage = '';
-
     try {
-      // Always save locally first - this is the most important operation
       await file.writeContent(content);
-
-      // Verify the local save worked
-      final savedContent = await file.readContent();
-      if (savedContent != content) {
-        throw Exception('Local content verification failed');
-      }
-
-      localSaveSuccess = true;
-      debugPrint('File saved locally successfully');
-
-      // Try to sync to cloud if signed in and online
-      try {
-        final isOnline = await _cloudSync.isOnline;
-        if (isOnline && _cloudSync.isSignedIn) {
-          final syncSuccess = await _cloudSync.syncFile(file).timeout(
-            const Duration(seconds: 15),
-            onTimeout: () {
-              debugPrint('Cloud sync timed out');
-              return false;
-            },
-          );
-
-          if (syncSuccess) {
-            resultMessage = 'File saved locally and synced to cloud';
-          } else {
-            // Queue for retry if the immediate sync fails
-            await _cloudSync.queueFileSync(file, SyncOperationType.update);
-            resultMessage =
-                'File saved locally, cloud sync failed - will retry later';
-          }
-        } else {
-          // Queue for retry when offline or not signed in
-          await _cloudSync.queueFileSync(file, SyncOperationType.update);
-          if (!isOnline) {
-            resultMessage = 'File saved locally (offline mode)';
-          } else {
-            resultMessage = 'File saved locally (not signed in)';
-          }
-        }
-      } catch (e) {
-        debugPrint('Error during cloud sync: $e');
-        // Queue for retry if the immediate sync fails
-        await _cloudSync.queueFileSync(file, SyncOperationType.update);
-        resultMessage =
-            'File saved locally, cloud sync failed - will retry later';
-      }
-
-      return (true, resultMessage);
+      _syncProvider.scheduleSync();
+      return (true, 'File saved locally');
     } catch (e) {
-      debugPrint('Error saving file: $e');
-      if (localSaveSuccess) {
-        return (true, 'File saved locally but with warnings: ${e.toString()}');
-      } else {
-        return (false, 'Failed to save file locally: ${e.toString()}');
-      }
+      return (false, 'Failed to save file locally: $e');
     }
   }
 
   Future<void> deleteFile(WritingFile file) async {
-    // Delete locally
     await file.delete();
-
-    // Delete from cloud
-    await _cloudSync.deleteFile(file.id);
+    _syncProvider.scheduleSync();
   }
 
   Future<void> renameFile(WritingFile file, String newName) async {
-    // Rename only touches the name in metadata - it must never rewrite
-    // content. Rewriting content here would race with a concurrent body
-    // autosave: this method's readContent() could capture stale content,
-    // and writing it back under a fresh lastModified would clobber newer
-    // content already on disk with an older copy that now looks newest.
-    final existingMetadata = await _storage.getMetadata(file.id);
-    final lastModified = existingMetadata != null &&
-            existingMetadata['lastModified'] != null
-        ? DateTime.parse(existingMetadata['lastModified'])
-        : file.lastModified;
-
-    await _storage.saveMetadata(file.id, {
-      'id': file.id,
-      'name': newName,
-      'lastModified': lastModified.toIso8601String(),
+    // Update only metadata: a rename must not overwrite a simultaneous autosave.
+    final modified = DateTime.now().toUtc();
+    await _storage.updateMetadata(file.id, (metadata) {
+      metadata['name'] = newName;
+      metadata['lastModified'] = modified.toIso8601String();
+      metadata['pendingSync'] =
+          SyncQueueService.newOperation(file.id, SyncOperationType.update)
+              .toJson();
     });
-
-    // Sync current on-disk content (under the new name) to the cloud.
-    final content = await file.readContent();
-    final updatedFile = WritingFile(
-      id: file.id,
-      name: newName,
-      content: content,
-      lastModified: lastModified,
-    );
-    await _cloudSync.syncFile(updatedFile);
+    file.name = newName;
+    file.lastModified = modified;
+    _syncProvider.scheduleSync();
   }
 
   Future<void> _migrateOldFiles() async {

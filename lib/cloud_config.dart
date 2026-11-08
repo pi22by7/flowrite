@@ -2,6 +2,20 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 
 class SupabaseConfig {
+  static bool get isConfigured {
+    final url = dotenv.isInitialized ? dotenv.env['SUPABASE_URL'] ?? '' : '';
+    final key =
+        dotenv.isInitialized ? dotenv.env['SUPABASE_ANON_KEY'] ?? '' : '';
+    final uri = Uri.tryParse(url);
+    return uri != null &&
+        ['http', 'https'].contains(uri.scheme) &&
+        uri.host.isNotEmpty &&
+        !url.contains('your-project') &&
+        !url.contains('YOUR_') &&
+        key.isNotEmpty &&
+        !key.toLowerCase().contains('your_');
+  }
+
   // Load configuration from environment variables
   static String get supabaseUrl =>
       dotenv.env['SUPABASE_URL'] ?? 'YOUR_SUPABASE_URL_HERE';
@@ -17,23 +31,23 @@ class SupabaseConfig {
       if (productionUrl != null && productionUrl.isNotEmpty) {
         return '$productionUrl/';
       }
-      
+
       final vercelUrl = dotenv.env['VERCEL_URL'];
       if (vercelUrl != null && vercelUrl.isNotEmpty) {
         return '$vercelUrl/';
       }
-      
+
       return 'http://localhost:3000/'; // Fallback for local development
     } else if (defaultTargetPlatform == TargetPlatform.linux ||
-               defaultTargetPlatform == TargetPlatform.macOS ||
-               defaultTargetPlatform == TargetPlatform.windows) {
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows) {
       // For desktop platforms, we'll handle this differently in the auth service
       return deepLinkScheme;
     }
-    // For mobile apps, use deep link scheme  
+    // For mobile apps, use deep link scheme
     return 'me.pi22by7.flowrite://login-callback';
   }
-  
+
   // Callback URL scheme for flutter_web_auth_2 on desktop
   static String get desktopCallbackScheme {
     return 'http'; // Use http scheme for localhost
