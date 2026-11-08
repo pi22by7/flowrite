@@ -82,6 +82,12 @@ Local-first architecture saves instantly. Sync happens quietly in background. Wo
 **Songwriter's Tools**
 Visual syllable patterns (dots, triangles, hexagons) that adapt to 1-12 syllables. Watercolor rhyme highlighting in 15 soft colors. CMU Pronouncing Dictionary with 126K+ words. Poetic rhyme categories: True Echoes, Gentle Echoes, Close Harmonies.
 
+**Chords Attached to Lyrics**
+Highlight a lyric and choose **Attach chord** from the selection menu, or use the music note button at the cursor. Chords appear above the lyrics and follow them as you edit. Drag a chord onto another word to move it; click to type a chord inline. Press Enter or click elsewhere to save, Escape to cancel, or clear the chord to remove it. Deleting the attached word removes its chord. Use the top-right **Chords** switch to hide or show chords; hidden chords remain attached as you edit, and their extra spacing collapses. The app remembers your choice. Songs with chords save and export as marked ChordPro text (`[Am]lyrics`), keeping chords together with the song during sync.
+
+**Song Sections**
+Type Markdown headings such as `## Verse 1`, `## Chorus`, or `## Bridge`. Headings display as bold section names, with the `#` markers hidden in the editor and preserved when saved or exported. Use the **Add section heading** button beside the song title to insert common sections, format the current line, or remove heading formatting. Section labels are excluded from rhyme colors and syllable counts.
+
 **Just Works**
 3-second autosave. Material 3 with dynamic color. Adaptive theming. Premium typography (34pt/18pt, 1.65 line height). File sorting and organization. Secure Google Sign-in. No ads, no paywalls.
 
@@ -124,6 +130,26 @@ flutter run
 flutter test                      # Unit tests
 flutter test integration_test/    # Integration tests
 ```
+
+The **Validate all platforms** workflow runs analysis and the shared unit/widget
+tests on pushes and pull requests, and compiles web, Android, iOS Simulator,
+Linux, macOS, and Windows builds. It also supports manual runs in GitHub Actions.
+It uses `.env.example` and does not publish builds or connect to production.
+Android validation uses a debug APK; iOS validation uses an unsigned simulator
+build. These checks do not verify store signing or installation on a device.
+
+Run `flutter doctor -v` and `flutter devices` to check local platform support.
+Android needs the Android SDK and an emulator or connected device. Linux needs
+Clang, CMake, Ninja, and GTK development libraries. iOS/macOS builds require
+macOS with Xcode; Windows builds require Windows with Visual Studio's C++ tools.
+
+Shared widget tests exercise the editor without a native device. Before a
+release, also run the app on each target device/simulator and check selecting
+lyrics, attaching/editing/dragging chords, inserting text before an attached
+word, headers and spaces, chord visibility, and saving/reopening the song and
+dashboard preview. Check phone and desktop widths, light/dark themes, text size,
+rhyme colors, and the full breathing-room range. Native keyboards, touch
+selection, and OS input methods require this additional device testing.
 
 ### Screenshots
 
