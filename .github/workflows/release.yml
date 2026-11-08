@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 env:
-  FLUTTER_VERSION: '3.47.4'
+  FLUTTER_VERSION: '3.47.9'
 
 jobs:
   prepare:
@@ -162,7 +162,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev
       - name: Enable Linux desktop
         run: flutter config --enable-linux-desktop
       - name: Create .env file
@@ -335,7 +335,7 @@ jobs:
         run: flutter pub get
       - name: Build Web
         run: |
-          flutter build web --release \
+          bash scripts/build_web.sh \
             --build-name=${{ needs.prepare.outputs.version }} \
             --build-number=${{ needs.prepare.outputs.build-number }} || {
               echo "::warning::Web build failed - continuing without Web artifacts"

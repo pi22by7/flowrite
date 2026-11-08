@@ -2,6 +2,7 @@
 *.class
 *.log
 *.pyc
+__pycache__/
 *.swp
 .DS_Store
 .atom/
@@ -35,7 +36,15 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-/deploy/
+/deploy/*
+!/deploy/nginx.conf
+!/deploy/15-local-resolver.sh
+!/deploy/selfhost.env.example
+!/deploy/webdav/
+/deploy/webdav/*
+!/deploy/webdav/Dockerfile
+!/deploy/webdav/entrypoint.sh
+!/deploy/webdav/httpd.conf
 
 # Symbolication related
 app.*.symbols
@@ -61,3 +70,13 @@ firebase-adminsdk-*.json
 # Other Secret Files
 secrets.json
 config/secrets.yml
+
+# Local self-hosting credentials
+/deploy/selfhost.env
+
+/backups/
+
+# Local agent state and cloud credentials
+/.agents/
+/.codex/
+/.aws/

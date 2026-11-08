@@ -26,7 +26,10 @@ class _HomeScreenState extends State<HomeScreen> {
   late final FileService _fileService;
   List<WritingFile> _files = [];
   SortOrder _currentSortOrder = SortOrder.lastModified;
-  StreamSubscription? _cloudSubscription;
+  SyncProvider? _syncProvider;
+  int _syncRevision = -1;
+  bool _refreshingRemote = false;
+  bool _refreshAgain = false;
   bool _isLoading = true;
   bool _isInitialized = false;
 
@@ -37,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _cloudSubscription?.cancel();
+    _syncProvider?.removeListener(_onSyncChanged);
     super.dispose();
   }
 
@@ -64,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _sortFiles();
           _isLoading = false;
         });
+        unawaited(_refreshRemoteFiles());
       }
     } catch (e) {
       debugPrint('Error loading files: $e');
@@ -79,22 +83,43 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _setupCloudSync() {
-    final syncProvider = Provider.of<SyncProvider>(context, listen: false);
+    _syncProvider = Provider.of<SyncProvider>(context, listen: false);
+    _syncProvider!.addListener(_onSyncChanged);
+  }
 
-    syncProvider.authStateChanges.listen((authState) {
-      if (authState.session != null) {
-        _cloudSubscription?.cancel();
-        _cloudSubscription = syncProvider.getFilesStream().listen((cloudFiles) {
+  void _onSyncChanged() {
+    if (!mounted || _syncRevision == _syncProvider!.revision) return;
+    _syncRevision = _syncProvider!.revision;
+    unawaited(_loadFiles());
+  }
+
+  Future<void> _refreshRemoteFiles() async {
+    if (_refreshingRemote) {
+      _refreshAgain = true;
+      return;
+    }
+    _refreshingRemote = true;
+    try {
+      do {
+        _refreshAgain = false;
+        final provider = _syncProvider;
+        if (provider == null) return;
+        await provider.ready;
+        if (!mounted || !provider.isCloudConfigured) return;
+        final revision = provider.revision;
+        final files = await _fileService.getFiles(context, includeRemote: true);
+        if (mounted && revision == provider.revision) {
           setState(() {
-            _files = cloudFiles;
+            _files = files;
             _sortFiles();
           });
-        });
-      } else {
-        _cloudSubscription?.cancel();
-        _loadFiles();
-      }
-    });
+        }
+      } while (mounted && _refreshAgain);
+    } catch (e) {
+      debugPrint('Remote refresh failed: $e');
+    } finally {
+      _refreshingRemote = false;
+    }
   }
 
   void _manualSync() async {
@@ -110,13 +135,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // Only sync to cloud if the active backend is configured
       if (syncProvider.isCloudConfigured) {
         debugPrint('Cloud backend configured, syncing pending changes');
-        await syncProvider.checkPendingSyncs();
+        await syncProvider.checkPendingSyncs(retryFailed: true);
         // Reload files after cloud sync
         await _loadFiles();
 
         scaffoldMessenger.showSnackBar(
           const SnackBar(
-            content: Text('Files synced successfully'),
+            content: Text('Sync attempted; local files are saved'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -124,7 +149,8 @@ class _HomeScreenState extends State<HomeScreen> {
         debugPrint('Cloud backend not configured, local sync only');
         scaffoldMessenger.showSnackBar(
           const SnackBar(
-            content: Text('Local files refreshed (connect cloud sync in Settings)'),
+            content:
+                Text('Local files refreshed (connect cloud sync in Settings)'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -246,7 +272,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       : '${_files.length} ${_files.length == 1 ? 'song' : 'songs'}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.primary.withValues(alpha: 0.7),
-                        fontStyle: _files.isEmpty ? FontStyle.italic : FontStyle.normal,
+                        fontStyle: _files.isEmpty
+                            ? FontStyle.italic
+                            : FontStyle.normal,
                         letterSpacing: 0.3,
                       ),
                 ),
@@ -530,21 +558,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Song title - larger, more prominent
                         Text(
                           file.name,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontFamily: 'Spectral',
-                                fontWeight: FontWeight.w500,
-                                height: 1.2,
-                                letterSpacing: -0.3,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontFamily: 'Spectral',
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.2,
+                                    letterSpacing: -0.3,
+                                  ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         // Emotional metadata
                         Text(
-                          EmotionalTimeFormat.getWrittenDescription(file.lastModified),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.primary.withValues(alpha: 0.6),
+                          EmotionalTimeFormat.getWrittenDescription(
+                              file.lastModified),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color:
+                                    colorScheme.primary.withValues(alpha: 0.6),
                                 letterSpacing: 0.2,
                               ),
                         ),
@@ -602,12 +636,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.only(top: 16),
                         child: Text(
                           preview,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                                height: 1.6,
-                                fontStyle: FontStyle.italic,
-                                letterSpacing: 0.1,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.8),
+                                    height: 1.6,
+                                    fontStyle: FontStyle.italic,
+                                    letterSpacing: 0.1,
+                                  ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -621,7 +657,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       'Tap to begin writing...',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                            color: colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.4),
                             fontStyle: FontStyle.italic,
                             letterSpacing: 0.3,
                           ),
@@ -649,8 +686,10 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       builder: (context, value, child) {
         // Create breathing effect: 0.95 -> 1.0 -> 0.95
-        final breathingValue = 0.95 + (0.05 * ((value < 0.5 ? value * 2 : (1 - value) * 2)));
-        final glowIntensity = 0.25 + (0.15 * ((value < 0.5 ? value * 2 : (1 - value) * 2)));
+        final breathingValue =
+            0.95 + (0.05 * ((value < 0.5 ? value * 2 : (1 - value) * 2)));
+        final glowIntensity =
+            0.25 + (0.15 * ((value < 0.5 ? value * 2 : (1 - value) * 2)));
 
         return Transform.scale(
           scale: breathingValue,
@@ -673,7 +712,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: _createNewFile,
                 borderRadius: BorderRadius.circular(24),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

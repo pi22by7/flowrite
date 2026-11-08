@@ -23,7 +23,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _focusMode = false;
   bool _syllableDotPattern = true;
   String _customSavePath = '';
-  SyncBackendType _syncBackendType = SyncBackendType.supabase;
+  SyncBackendType _syncBackendType = SyncBackendType.none;
 
   bool get showSyllables => _showSyllables;
   bool get showRhymes => _showRhymes;
@@ -32,6 +32,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get showChords => _showChords ?? true;
   bool get focusMode => _focusMode;
   bool get syllableDotPattern => _syllableDotPattern;
+
   /// Empty string means the default app-documents location is used.
   String get customSavePath => _customSavePath;
   SyncBackendType get syncBackendType => _syncBackendType;
@@ -89,7 +90,7 @@ class SettingsProvider extends ChangeNotifier {
     _customSavePath = prefs.getString(_customSavePathKey) ?? '';
     _syncBackendType = SyncBackendType.values.firstWhere(
       (t) => t.name == prefs.getString(_syncBackendTypeKey),
-      orElse: () => SyncBackendType.supabase,
+      orElse: () => SyncBackendType.none,
     );
     notifyListeners();
   }

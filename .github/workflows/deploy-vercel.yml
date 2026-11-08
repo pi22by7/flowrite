@@ -12,7 +12,7 @@ on:
         type: string
 
 env:
-  FLUTTER_VERSION: '3.47.4'
+  FLUTTER_VERSION: '3.47.9'
 
 jobs:
   deploy:
@@ -41,7 +41,7 @@ jobs:
       
     - name: Build web app
       run: |
-        flutter build web --release --base-href /
+        bash scripts/build_web.sh --base-href /
         
     - name: Copy Vercel configuration
       run: cp vercel.json build/web/

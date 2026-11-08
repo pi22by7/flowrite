@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/sync_provider.dart';
@@ -72,10 +73,11 @@ class _SettingsPanelState extends State<SettingsPanel> {
                     const SizedBox(width: 12),
                     Text(
                       'Your Atmosphere',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Spectral',
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'Spectral',
+                              ),
                     ),
                   ],
                 ),
@@ -85,7 +87,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
                   child: Text(
                     'Shape your creative sanctuary',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          color: colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.7),
                           fontStyle: FontStyle.italic,
                         ),
                   ),
@@ -259,7 +262,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
               child: Text(
                 description,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
+                      color:
+                          colorScheme.onSurfaceVariant.withValues(alpha: 0.65),
                       fontSize: 12,
                     ),
               ),
@@ -296,7 +300,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-                      : colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                      : colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected
@@ -312,7 +317,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
                     // Font personality label
                     if (personality.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: isSelected
                               ? colorScheme.primary.withValues(alpha: 0.15)
@@ -527,9 +533,11 @@ class _SettingsPanelState extends State<SettingsPanel> {
     SettingsProvider settings,
     ColorScheme colorScheme,
   ) {
-    final currentPath = settings.customSavePath.isEmpty
-        ? 'Default app storage'
-        : settings.customSavePath;
+    final currentPath = kIsWeb
+        ? 'This browser (IndexedDB)'
+        : settings.customSavePath.isEmpty
+            ? 'Default app storage'
+            : settings.customSavePath;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,7 +547,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
           decoration: BoxDecoration(
             color: colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
+            border:
+                Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
           ),
           child: Row(
             children: [
@@ -572,7 +581,9 @@ class _SettingsPanelState extends State<SettingsPanel> {
               ),
               const SizedBox(width: 12),
               TextButton(
-                onPressed: _isMigrating ? null : () => _changeSaveLocation(context, settings),
+                onPressed: kIsWeb || _isMigrating
+                    ? null
+                    : () => _changeSaveLocation(context, settings),
                 child: _isMigrating
                     ? const SizedBox(
                         width: 16,
@@ -631,11 +642,12 @@ class _SettingsPanelState extends State<SettingsPanel> {
       final message = result.success
           ? 'Moved ${result.migratedCount} file(s) to new location'
           : '${result.migratedCount} file(s) moved, ${result.failedIds.length} failed - old location kept as fallback';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to change save location: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to change save location: $e')));
     } finally {
       if (mounted) setState(() => _isMigrating = false);
     }
@@ -651,7 +663,9 @@ class _SettingsPanelState extends State<SettingsPanel> {
           children: [
             Row(
               children: SyncBackendType.values
-                  .where((t) => t != SyncBackendType.icloud) // Phase 4, not implemented yet
+                  .where((t) =>
+                      t !=
+                      SyncBackendType.icloud) // Phase 4, not implemented yet
                   .map((type) {
                 final isSelected = type == backendType;
                 return Expanded(
@@ -666,9 +680,19 @@ class _SettingsPanelState extends State<SettingsPanel> {
                             if (mounted) setState(() {});
                             return;
                           }
+                          if (type == SyncBackendType.supabase &&
+                              !syncProvider.supabaseAvailable) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Supabase is not configured. Use local-only mode or connect WebDAV.')));
+                            return;
+                          }
                           await syncProvider.switchBackend(type);
                           if (!context.mounted) return;
-                          final settings = Provider.of<SettingsProvider>(context, listen: false);
+                          final settings = Provider.of<SettingsProvider>(
+                              context,
+                              listen: false);
                           await settings.setSyncBackendType(type);
                         },
                         borderRadius: BorderRadius.circular(12),
@@ -676,8 +700,10 @@ class _SettingsPanelState extends State<SettingsPanel> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-                                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                ? colorScheme.primaryContainer
+                                    .withValues(alpha: 0.5)
+                                : colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
@@ -691,10 +717,13 @@ class _SettingsPanelState extends State<SettingsPanel> {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? colorScheme.primary
-                                  : colorScheme.onSurface.withValues(alpha: 0.7),
+                                  : colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
                             ),
                           ),
                         ),
@@ -717,7 +746,7 @@ class _SettingsPanelState extends State<SettingsPanel> {
   String _backendLabel(SyncBackendType type) {
     switch (type) {
       case SyncBackendType.none:
-        return 'None';
+        return 'Local only';
       case SyncBackendType.supabase:
         return 'Supabase';
       case SyncBackendType.webdav:
@@ -763,20 +792,24 @@ class _SettingsPanelState extends State<SettingsPanel> {
           const SizedBox(height: 12),
           TextField(
             controller: _usernameController,
-            decoration: const InputDecoration(labelText: 'Username', isDense: true),
+            decoration:
+                const InputDecoration(labelText: 'Username', isDense: true),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _appPasswordController,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'App Password', isDense: true),
+            decoration:
+                const InputDecoration(labelText: 'App Password', isDense: true),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _isTestingWebDav ? null : () => _testWebDavConnection(context),
+                  onPressed: _isTestingWebDav
+                      ? null
+                      : () => _testWebDavConnection(context),
                   child: _isTestingWebDav
                       ? const SizedBox(
                           width: 16,
@@ -789,7 +822,9 @@ class _SettingsPanelState extends State<SettingsPanel> {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
-                  onPressed: _isSavingWebDav ? null : () => _saveWebDavConfig(context, syncProvider),
+                  onPressed: _isSavingWebDav
+                      ? null
+                      : () => _saveWebDavConfig(context, syncProvider),
                   child: _isSavingWebDav
                       ? const SizedBox(
                           width: 16,
@@ -817,40 +852,45 @@ class _SettingsPanelState extends State<SettingsPanel> {
   Future<void> _testWebDavConnection(BuildContext context) async {
     setState(() => _isTestingWebDav = true);
     try {
-      final success = await _webDavConfigService.testConnection(_currentWebDavFormConfig());
+      final success =
+          await _webDavConfigService.testConnection(_currentWebDavFormConfig());
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(success ? 'Connection successful' : 'Connection failed - check your details'),
+        content: Text(success
+            ? 'Connection successful'
+            : 'Connection failed - check your details'),
       ));
     } finally {
       if (mounted) setState(() => _isTestingWebDav = false);
     }
   }
 
-  Future<void> _saveWebDavConfig(BuildContext context, SyncProvider syncProvider) async {
+  Future<void> _saveWebDavConfig(
+      BuildContext context, SyncProvider syncProvider) async {
     setState(() => _isSavingWebDav = true);
     try {
       final config = _currentWebDavFormConfig();
-      await _webDavConfigService.saveConfig(config);
-      await syncProvider.switchBackend(SyncBackendType.webdav);
+      await syncProvider.configureWebDav(config);
 
       if (!context.mounted) return;
       final settings = Provider.of<SettingsProvider>(context, listen: false);
       await settings.setSyncBackendType(SyncBackendType.webdav);
 
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('WebDAV connected')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('WebDAV settings saved; sync will run when reachable')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to save WebDAV settings: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save WebDAV settings: $e')));
     } finally {
       if (mounted) setState(() => _isSavingWebDav = false);
     }
   }
 
-  Future<void> _exportCurrentFiles(BuildContext context, {required bool all}) async {
+  Future<void> _exportCurrentFiles(BuildContext context,
+      {required bool all}) async {
     try {
       final fileService = FileService(
         syncProvider: Provider.of<SyncProvider>(context, listen: false),
@@ -1004,9 +1044,21 @@ class _SettingsPanelState extends State<SettingsPanel> {
     ColorScheme colorScheme,
   ) {
     final themeOptions = [
-      {'value': AppThemeMode.light, 'label': 'Light', 'icon': Icons.wb_sunny_rounded},
-      {'value': AppThemeMode.dark, 'label': 'Dark', 'icon': Icons.nights_stay_rounded},
-      {'value': AppThemeMode.system, 'label': 'System', 'icon': Icons.brightness_auto_rounded},
+      {
+        'value': AppThemeMode.light,
+        'label': 'Light',
+        'icon': Icons.wb_sunny_rounded
+      },
+      {
+        'value': AppThemeMode.dark,
+        'label': 'Dark',
+        'icon': Icons.nights_stay_rounded
+      },
+      {
+        'value': AppThemeMode.system,
+        'label': 'System',
+        'icon': Icons.brightness_auto_rounded
+      },
     ];
 
     return Row(
@@ -1018,14 +1070,16 @@ class _SettingsPanelState extends State<SettingsPanel> {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => themeProvider.setThemeMode(option['value'] as AppThemeMode),
+                onTap: () =>
+                    themeProvider.setThemeMode(option['value'] as AppThemeMode),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-                        : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        : colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
@@ -1048,7 +1102,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
                         option['label'] as String,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
                           color: isSelected
                               ? colorScheme.primary
                               : colorScheme.onSurface.withValues(alpha: 0.7),

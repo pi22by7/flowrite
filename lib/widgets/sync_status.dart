@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/sync_provider.dart';
 import '../providers/settings_provider.dart';
+import '../models/sync_operation.dart' as model;
 
 class SyncStatus extends StatelessWidget {
   /// Opens the Settings panel (Cloud Sync section), used when the active
@@ -20,6 +21,14 @@ class SyncStatus extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final icon = !syncProvider.isCloudConfigured
+        ? Icons.cloud_off_outlined
+        : switch (syncProvider.syncStatus) {
+            model.SyncStatus.synced => Icons.cloud_done_outlined,
+            model.SyncStatus.pending => Icons.cloud_upload_outlined,
+            model.SyncStatus.error => Icons.cloud_off_outlined,
+            _ => Icons.cloud_outlined,
+          };
     return Container(
       width: 40,
       height: 40,
@@ -34,9 +43,7 @@ class SyncStatus extends StatelessWidget {
         icon: Stack(
           children: [
             Icon(
-              syncProvider.isCloudConfigured
-                  ? Icons.cloud_done_outlined
-                  : Icons.cloud_off_outlined,
+              icon,
               color: colorScheme.onSurface.withValues(alpha: 0.7),
               size: 20,
             ),
@@ -220,7 +227,8 @@ class _DialogButton extends StatelessWidget {
   final IconData? icon;
   final VoidCallback onPressed;
 
-  const _DialogButton({required this.label, required this.onPressed, this.icon});
+  const _DialogButton(
+      {required this.label, required this.onPressed, this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +250,8 @@ class _DialogButton extends StatelessWidget {
           ),
         ),
         icon: icon != null
-            ? Icon(icon, size: 16, color: colorScheme.onSurface.withValues(alpha: 0.8))
+            ? Icon(icon,
+                size: 16, color: colorScheme.onSurface.withValues(alpha: 0.8))
             : const SizedBox.shrink(),
         label: Text(
           label,

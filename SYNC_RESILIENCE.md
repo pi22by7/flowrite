@@ -1,5 +1,9 @@
 # Sync Resilience System
 
+> The current local-first implementation and hosting instructions are documented in
+> [SELF_HOSTING.md](docs/SELF_HOSTING.md). This document describes the original
+> preferences-based sync system; its storage diagrams and loss guarantees are historical.
+
 ## Overview
 
 Flowrite now includes a comprehensive sync resilience system that ensures no data is ever lost, even in poor network conditions or when offline. The system follows a **local-first architecture** where all data is stored locally first, then synced to the cloud when possible.

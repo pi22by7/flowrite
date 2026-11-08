@@ -1,0 +1,19 @@
+services:
+  flowrite:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${FLOWRITE_BIND:-127.0.0.1}:${FLOWRITE_PORT:-8080}:80"
+    depends_on:
+      webdav:
+        condition: service_healthy
+  webdav:
+    build: deploy/webdav
+    restart: unless-stopped
+    environment:
+      WEBDAV_USERNAME: "${WEBDAV_USERNAME:?Set WEBDAV_USERNAME in deploy/selfhost.env}"
+      WEBDAV_PASSWORD: "${WEBDAV_PASSWORD:?Set WEBDAV_PASSWORD in deploy/selfhost.env}"
+    volumes:
+      - flowrite_documents:/var/lib/dav
+volumes:
+  flowrite_documents:

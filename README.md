@@ -12,9 +12,12 @@
 [![Release](https://img.shields.io/github/v/release/pi22by7/flowrite?style=for-the-badge&logo=github)](https://github.com/pi22by7/flowrite/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pi22by7/flowrite/release.yml?style=for-the-badge&logo=github-actions)](https://github.com/pi22by7/flowrite/actions/workflows/release.yml)
 
-**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v4.0.0** | **Flutter: 3.32.6**
+**[🌐 Try Web Demo](https://flowrite.pi22by7.me)** | **[📥 Download](https://github.com/pi22by7/flowrite/releases/latest)** | **Current Version: v4.0.0** | **Flutter: 3.47.9**
 
 A songwriter's sanctuary. Write lyrics anywhere, sync everywhere, lose nothing.
+
+Run Flowrite on your own Linux server with Docker Compose, without Supabase or
+Google sign-in. See the [self-hosting and offline setup guide](docs/SELF_HOSTING.md).
 
 ## 💖 Why This Exists
 
@@ -77,7 +80,7 @@ This is my contribution to that vision.
 Warm cream and charcoal palette. Time-aware greetings. Centered composition. Breathing button animation. Focus mode to hide everything but your words.
 
 **Your Work, Always Safe**
-Local-first architecture saves instantly. Sync happens quietly in background. Works offline, syncs when you're back. Smart retry with exponential backoff. Multi-device conflict resolution. Zero data loss, ever.
+Local-first architecture saves instantly. Sync happens quietly in background. Works offline, syncs when you're back. Smart retry with exponential backoff. Multi-device conflict resolution. Pending edits are retried after reconnecting.
 
 **Songwriter's Tools**
 Visual syllable patterns (dots, triangles, hexagons) that adapt to 1-12 syllables. Watercolor rhyme highlighting in 15 soft colors. CMU Pronouncing Dictionary with 126K+ words. Poetic rhyme categories: True Echoes, Gentle Echoes, Close Harmonies.
@@ -99,9 +102,9 @@ Pre-built releases for Android, Linux, Windows, and macOS:
 
 ## 🚀 Quick Start
 
-**Users**: Download, open, write. Sign in with Google to sync across devices.
+**Users**: Download, open, write. Optionally connect WebDAV or Supabase to sync across devices.
 
-**Developers**: Clone, configure `.env` with Supabase credentials, run `flutter pub get && flutter run`.
+**Developers**: Clone, copy `.env.example` to `.env`, run `flutter pub get && flutter run`.
 
 See [setup details](#for-developers) below.
 
@@ -110,8 +113,7 @@ See [setup details](#for-developers) below.
 ### Prerequisites
 
 - Flutter SDK (latest stable)
-- Supabase project (for cloud features)
-- Google OAuth configured in Supabase
+- Optional: a WebDAV server, or a Supabase project with Google OAuth, for sync
 - Android Studio or VS Code
 
 ### Setup
@@ -119,7 +121,7 @@ See [setup details](#for-developers) below.
 ```bash
 git clone https://github.com/pi22by7/flowrite.git
 cd flowrite
-cp .env.example .env  # Add your Supabase/OAuth credentials
+cp .env.example .env  # Cloud credentials are optional
 flutter pub get
 flutter run
 ```
@@ -216,8 +218,9 @@ All contributions welcome. Beginner-friendly tasks in [TODO.md](TODO.md), from s
 
 ## 🔒 Privacy
 
-- End-to-end encrypted sync
-- Google OAuth for auth
+- Optional sync to your own WebDAV server; use HTTPS for transport encryption
+- Synced document JSON is readable on the server; end-to-end encryption is not implemented
+- Optional Google OAuth when using Supabase
 - Local-first data storage
 - No tracking, no ads
 

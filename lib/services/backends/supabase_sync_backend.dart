@@ -17,7 +17,8 @@ class SupabaseSyncBackend implements SyncBackend {
   final SupabaseClient _supabase = Supabase.instance.client;
   final AuthService _authService = AuthService();
   final SyncQueueService _queueService = SyncQueueService();
-  final ConflictResolutionService _conflictService = ConflictResolutionService();
+  final ConflictResolutionService _conflictService =
+      ConflictResolutionService();
 
   String get _userId => _supabase.auth.currentUser?.id ?? '';
 
@@ -33,7 +34,7 @@ class SupabaseSyncBackend implements SyncBackend {
 
   void _updateStatus(SyncStatus newStatus) {
     _status = newStatus;
-    _statusController.add(newStatus);
+    if (!_statusController.isClosed) _statusController.add(newStatus);
   }
 
   Future<bool> _ensureValidSession() async {
@@ -66,73 +67,28 @@ class SupabaseSyncBackend implements SyncBackend {
           .from('user_files')
           .select('id')
           .limit(1)
-          .withConverter((data) => data);
+          .withConverter((data) => data)
+          .timeout(const Duration(seconds: 5));
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  /// Immediate upload of one file, used right after a local save.
   @override
   Future<bool> syncFile(WritingFile file) async {
-    if (_userId.isEmpty) {
-      debugPrint('User not signed in, cannot sync file ${file.id}');
-      return false;
-    }
-
-    try {
-      if (!await _ensureValidSession()) {
-        debugPrint('Invalid session, cannot sync file ${file.id}');
-        return false;
-      }
-
-      if (!await isOnline) {
-        debugPrint('Device is offline, cannot sync file ${file.id}');
-        return false;
-      }
-
-      String content;
-      try {
-        content = await file.readContent();
-      } catch (e) {
-        debugPrint('Error reading content for file ${file.id}: $e');
-        return false;
-      }
-
-      await _supabase.from('user_files').upsert({
-        'id': file.id,
-        'user_id': _userId,
-        'name': file.name,
-        'content': content,
-        'last_modified': file.lastModified.toIso8601String(),
-      }).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw Exception('Supabase upsert timeout'),
-      );
-
-      debugPrint('Successfully synced file ${file.id} to cloud');
-      return true;
-    } catch (e) {
-      debugPrint('Error syncing file ${file.id} to cloud: $e');
-      return false;
-    }
+    await queueFileSync(file,
+        file.isDeleted ? SyncOperationType.delete : SyncOperationType.update);
+    return !(await _queueService.getQueue()).any((op) => op.fileId == file.id);
   }
 
   @override
   Future<void> deleteFile(String fileId) async {
-    if (_userId.isEmpty) return;
-
-    try {
-      await _supabase
-          .from('user_files')
-          .delete()
-          .eq('id', fileId)
-          .eq('user_id', _userId);
-    } catch (e) {
-      debugPrint('Error deleting file: $e');
-      rethrow;
+    final meta = await StorageService.create().getMetadata(fileId);
+    if (meta?['deleted'] != true) {
+      await WritingFile(id: fileId, name: meta?['name'] ?? fileId).delete();
     }
+    await processSyncQueue();
   }
 
   @override
@@ -153,6 +109,7 @@ class SupabaseSyncBackend implements SyncBackend {
                   id: item['id'],
                   name: item['name'],
                   content: item['content'],
+                  isDeleted: item['deleted'] == true,
                   lastModified: DateTime.parse(item['last_modified']),
                 ))
             .toList());
@@ -185,8 +142,19 @@ class SupabaseSyncBackend implements SyncBackend {
   }
 
   /// Process sync queue with exponential backoff retry
+  Future<void>? _processing;
   @override
   Future<void> processSyncQueue() async {
+    if (_processing != null) return _processing;
+    _processing = _processSyncQueue();
+    try {
+      await _processing;
+    } finally {
+      _processing = null;
+    }
+  }
+
+  Future<void> _processSyncQueue() async {
     if (_userId.isEmpty) {
       debugPrint('⚠️ User not signed in, skipping sync');
       return;
@@ -237,7 +205,8 @@ class SupabaseSyncBackend implements SyncBackend {
         }
       }
 
-      debugPrint('📊 Sync complete: $successCount succeeded, $failureCount failed');
+      debugPrint(
+          '📊 Sync complete: $successCount succeeded, $failureCount failed');
 
       if (failureCount == 0) {
         _updateStatus(SyncStatus.synced);
@@ -253,115 +222,68 @@ class SupabaseSyncBackend implements SyncBackend {
   }
 
   Future<bool> _processSingleOperation(SyncOperation operation) async {
-    debugPrint('⚙️ Processing ${operation.type.name} for file ${operation.fileId}');
-
     try {
-      switch (operation.type) {
-        case SyncOperationType.create:
-        case SyncOperationType.update:
-          return await _syncFileToCloud(operation.fileId);
-
-        case SyncOperationType.delete:
-          return await _deleteFileFromCloud(operation.fileId);
-      }
-    } catch (e) {
-      debugPrint('❌ Operation failed: $e');
-      return false;
-    }
-  }
-
-  /// Sync a file to cloud with conflict resolution
-  Future<bool> _syncFileToCloud(String fileId) async {
-    try {
-      final localFile = WritingFile(id: fileId, name: '');
-      final content = await localFile.readContent();
-      final metadata = await _getLocalFileMetadata(fileId);
-
-      if (metadata == null) {
-        debugPrint('⚠️ No metadata found for file $fileId');
-        return false;
-      }
-
+      final storage = StorageService.create();
+      final record = await storage.readDocument(operation.fileId);
+      if (record == null) return false;
+      final meta = Map<String, dynamic>.from(record['metadata'] as Map);
+      if ((meta['pendingSync'] as Map?)?['id'] != operation.id) return true;
+      final local = WritingFile.fromJson(
+          {...meta, 'id': operation.fileId, 'content': record['content']});
       final remoteData = await _supabase
           .from('user_files')
           .select()
-          .eq('id', fileId)
+          .eq('id', operation.fileId)
           .eq('user_id', _userId)
           .maybeSingle();
-
-      WritingFile? remoteFile;
-      if (remoteData != null) {
-        remoteFile = WritingFile.fromJson(remoteData);
-      }
-
-      if (remoteFile != null) {
-        final hasConflict = _conflictService.hasConflict(localFile, remoteFile);
-
-        if (hasConflict) {
-          debugPrint('⚠️ Conflict detected for file $fileId');
-
-          await _conflictService.createBackup(remoteFile, 'remote');
-
-          final resolved = await _conflictService.resolveConflict(
-            localFile: localFile,
-            remoteFile: remoteFile,
-            strategy: ConflictResolution.newerWins,
-          );
-
-          if (resolved.id == remoteFile.id) {
-            await localFile.writeContent(remoteFile.content ?? '');
-            debugPrint('✅ Conflict resolved: remote version kept');
-            return true;
-          }
+      final remote =
+          remoteData == null ? null : WritingFile.fromJson(remoteData);
+      if (remote != null &&
+          remote.snapshot != local.snapshot &&
+          meta['remoteSnapshot'] != remote.snapshot) {
+        final remoteWins = remote.isDeleted ||
+            !local.isDeleted && remote.lastModified.isAfter(local.lastModified);
+        final loser = remoteWins ? local : remote;
+        if (!loser.isDeleted &&
+            loser.content != (remoteWins ? remote.content : local.content) &&
+            (loser.content?.isNotEmpty ?? false)) {
+          await _conflictService.createBackup(loser, 'conflict');
+        }
+        if (remoteWins) {
+          await remote.saveRemote(expectedOperationId: operation.id);
+          return true;
         }
       }
-
-      await _supabase.from('user_files').upsert({
-        'id': fileId,
+      final payload = {
+        'id': local.id,
         'user_id': _userId,
-        'name': metadata['name'],
-        'content': content,
-        'last_modified': metadata['lastModified'],
-      }).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Upload timeout'),
-      );
-
-      debugPrint('✅ Synced file $fileId to cloud');
+        'name': local.name,
+        'content': local.content,
+        'deleted': local.isDeleted,
+        'last_modified': local.lastModified.toUtc().toIso8601String(),
+      };
+      if (remoteData == null) {
+        await _supabase
+            .from('user_files')
+            .insert(payload)
+            .timeout(const Duration(seconds: 15));
+      } else if (remote!.snapshot != local.snapshot) {
+        final updated = await _supabase
+            .from('user_files')
+            .update(payload)
+            .eq('id', local.id)
+            .eq('user_id', _userId)
+            .eq('updated_at', remoteData['updated_at'])
+            .select('id')
+            .timeout(const Duration(seconds: 15));
+        if (updated.isEmpty) return false;
+      }
+      await storage.updateMetadata(
+          local.id, (metadata) => metadata['remoteSnapshot'] = local.snapshot);
       return true;
     } catch (e) {
-      debugPrint('❌ Error syncing file to cloud: $e');
+      debugPrint('Supabase sync failed: $e');
       return false;
-    }
-  }
-
-  Future<bool> _deleteFileFromCloud(String fileId) async {
-    try {
-      await _supabase
-          .from('user_files')
-          .delete()
-          .eq('id', fileId)
-          .eq('user_id', _userId)
-          .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('Delete timeout'),
-      );
-
-      debugPrint('✅ Deleted file $fileId from cloud');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error deleting file from cloud: $e');
-      return false;
-    }
-  }
-
-  Future<Map<String, dynamic>?> _getLocalFileMetadata(String fileId) async {
-    try {
-      final storage = StorageService.create();
-      return await storage.getMetadata(fileId);
-    } catch (e) {
-      debugPrint('❌ Error getting local metadata: $e');
-      return null;
     }
   }
 
@@ -372,7 +294,6 @@ class SupabaseSyncBackend implements SyncBackend {
 
   @override
   Future<void> clearSyncData() async {
-    await _queueService.clearAll();
     _updateStatus(SyncStatus.idle);
   }
 

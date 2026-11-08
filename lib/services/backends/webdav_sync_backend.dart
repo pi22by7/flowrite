@@ -11,343 +11,249 @@ import '../sync_backend.dart';
 import '../sync_queue_service.dart';
 import '../webdav_config_service.dart';
 
-/// WebDAV-backed [SyncBackend] for NextCloud/ownCloud/generic WebDAV servers.
-/// Each file is stored as a single JSON blob at `/flowrite/<id>.json` under
-/// the account root, authenticated with a server URL + username + app
-/// password (no OAuth).
+/// One JSON record per document. Deleted documents remain as tombstones so
+/// devices that were offline can learn about deletions when they reconnect.
 class WebDavSyncBackend implements SyncBackend {
-  static const String _remoteDir = '/flowrite/';
-
-  final WebDavConfigService _configService = WebDavConfigService();
+  static const _remoteDir = '/flowrite/';
+  final WebDavConfigService _configService;
   final SyncQueueService _queueService = SyncQueueService();
-  final ConflictResolutionService _conflictService = ConflictResolutionService();
-
-  WebDavConfig? _cachedConfig;
-  bool _dirEnsured = false;
-
-  SyncStatus _status = SyncStatus.idle;
-  SyncStatus get status => _status;
-
+  final ConflictResolutionService _conflicts = ConflictResolutionService();
+  final Dio _http;
+  final webdav.Client Function(WebDavConfig)? clientFactory;
+  WebDavConfig? _config;
+  Future<void>? _processing;
   final _statusController = StreamController<SyncStatus>.broadcast();
+
+  WebDavSyncBackend(
+      {WebDavConfigService? configService, Dio? http, this.clientFactory})
+      : _configService = configService ?? WebDavConfigService(),
+        _http = http ?? Dio();
+
   @override
   Stream<SyncStatus> get statusStream => _statusController.stream;
-
-  void _updateStatus(SyncStatus newStatus) {
-    _status = newStatus;
-    _statusController.add(newStatus);
+  void _status(SyncStatus status) {
+    if (!_statusController.isClosed) _statusController.add(status);
   }
 
-  /// Re-reads credentials from secure storage. [isSignedIn] reflects
-  /// whatever was cached by the most recent call to this (or [isOnline],
-  /// which calls it first) - callers that check [isOnline] before
-  /// [isSignedIn], as [FileService] does, always see a fresh value.
-  Future<WebDavConfig?> _ensureConfigLoaded() async {
-    _cachedConfig = await _configService.getConfig();
-    return _cachedConfig;
+  Future<WebDavConfig?> _loadConfig() async {
+    _config = await _configService.getConfig();
+    return _config;
   }
 
   @override
-  bool get isSignedIn => _cachedConfig != null;
+  bool get isSignedIn => _config != null;
 
   webdav.Client _client(WebDavConfig config) {
-    return webdav.newClient(
-      config.serverUrl,
-      user: config.username,
-      password: config.appPassword,
-    );
-  }
-
-  Future<void> _ensureRemoteDir(webdav.Client client) async {
-    if (_dirEnsured) return;
-    await client.mkdirAll(_remoteDir);
-    _dirEnsured = true;
+    if (clientFactory != null) return clientFactory!(config);
+    return webdav.newClient(config.serverUrl,
+        user: config.username, password: config.appPassword)
+      // Send credentials on the first browser request. An unauthenticated
+      // challenge can become an XHR authentication error before Dart sees it.
+      ..auth = webdav.BasicAuth(user: config.username, pwd: config.appPassword)
+      ..setConnectTimeout(5000)
+      ..setSendTimeout(15000)
+      ..setReceiveTimeout(15000);
   }
 
   @override
   Future<bool> get isOnline async {
-    final config = await _ensureConfigLoaded();
+    final config = await _loadConfig();
     if (config == null) return false;
-
     try {
       await _client(config).ping();
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
+  }
+
+  Future<Response<dynamic>> _request(
+      WebDavConfig config, String fileId, String method,
+      {String? data, Map<String, dynamic>? headers}) {
+    final root = config.serverUrl.replaceAll(RegExp(r'/+$'), '');
+    final url = '$root$_remoteDir${Uri.encodeComponent(fileId)}.json';
+    return _http
+        .request<dynamic>(url,
+            data: data,
+            options: Options(
+              method: method,
+              responseType: ResponseType.plain,
+              sendTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 15),
+              headers: {
+                'Authorization':
+                    'Basic ${base64Encode(utf8.encode('${config.username}:${config.appPassword}'))}',
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache',
+                ...?headers
+              },
+              validateStatus: (status) =>
+                  status != null &&
+                  (status < 300 || status == 404 || status == 412),
+            ))
+        .timeout(const Duration(seconds: 20));
+  }
+
+  Future<({WritingFile? file, String? etag})> _readRemote(
+      WebDavConfig config, String id) async {
+    final response = await _request(config, id, 'GET');
+    if (response.statusCode == 404) return (file: null, etag: null);
+    final file = WritingFile.fromJson(
+        Map<String, dynamic>.from(jsonDecode(response.data as String) as Map));
+    if (file.id != id) {
+      throw FormatException('Remote document ID does not match its path');
+    }
+    return (file: file, etag: response.headers.value('etag'));
   }
 
   @override
   Future<bool> syncFile(WritingFile file) async {
-    final config = _cachedConfig ?? await _ensureConfigLoaded();
-    if (config == null) {
-      debugPrint('WebDAV not configured, cannot sync file ${file.id}');
-      return false;
-    }
-
-    try {
-      final client = _client(config);
-      await _ensureRemoteDir(client);
-
-      final content = await file.readContent();
-      final payload = utf8.encode(json.encode({
-        'id': file.id,
-        'name': file.name,
-        'content': content,
-        'lastModified': file.lastModified.toIso8601String(),
-      }));
-
-      await client.write(
-        '$_remoteDir${file.id}.json',
-        Uint8List.fromList(payload),
-      ).timeout(const Duration(seconds: 15));
-
-      debugPrint('✅ Synced file ${file.id} to WebDAV');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error syncing file ${file.id} to WebDAV: $e');
-      return false;
-    }
+    await _queueService.enqueue(file.id,
+        file.isDeleted ? SyncOperationType.delete : SyncOperationType.update);
+    await processSyncQueue();
+    return !(await _queueService.getQueue()).any((op) => op.fileId == file.id);
   }
 
   @override
   Future<void> deleteFile(String fileId) async {
-    final config = _cachedConfig ?? await _ensureConfigLoaded();
-    if (config == null) return;
-
-    try {
-      final client = _client(config);
-      await client.remove('$_remoteDir$fileId.json');
-    } catch (e) {
-      debugPrint('Error deleting file from WebDAV: $e');
-      rethrow;
+    // All deletion paths use the same conflict-aware outbox as edits.
+    final metadata = await StorageService.create().getMetadata(fileId);
+    if (metadata?['deleted'] != true) {
+      await WritingFile(id: fileId, name: metadata?['name'] ?? fileId).delete();
     }
-  }
-
-  Future<WritingFile?> _readRemoteFile(webdav.Client client, String fileId) async {
-    try {
-      final bytes = await client.read('$_remoteDir$fileId.json');
-      final data = json.decode(utf8.decode(bytes)) as Map<String, dynamic>;
-      return WritingFile(
-        id: data['id'],
-        name: data['name'],
-        content: data['content'],
-        lastModified: DateTime.parse(data['lastModified']),
-      );
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) return null;
-      rethrow;
-    }
+    await processSyncQueue();
   }
 
   @override
-  Stream<List<WritingFile>> getFilesStream() {
-    return Stream.fromFuture(_fetchAllFiles());
-  }
-
-  Future<List<WritingFile>> _fetchAllFiles() async {
-    final config = await _ensureConfigLoaded();
-    if (config == null) return [];
-
-    try {
-      final client = _client(config);
-      await _ensureRemoteDir(client);
-
-      final entries = await client.readDir(_remoteDir);
-      final files = <WritingFile>[];
-
-      for (final entry in entries) {
-        if (entry.isDir == true || entry.name == null || !entry.name!.endsWith('.json')) {
-          continue;
-        }
-        final fileId = entry.name!.replaceAll('.json', '');
-        final file = await _readRemoteFile(client, fileId);
-        if (file != null) files.add(file);
+  Stream<List<WritingFile>> getFilesStream() async* {
+    final config = await _loadConfig();
+    if (config == null) return;
+    final client = _client(config);
+    await client.mkdirAll(_remoteDir);
+    for (final entry in await client.readDir(_remoteDir)) {
+      if (entry.isDir == true || !(entry.name?.endsWith('.json') ?? false)) {
+        continue;
       }
-
-      return files;
-    } catch (e) {
-      debugPrint('Error listing WebDAV files: $e');
-      return [];
+      final id = entry.name!.substring(0, entry.name!.length - 5);
+      try {
+        final remote = await _readRemote(config, id);
+        if (remote.file != null) yield [remote.file!];
+      } catch (e) {
+        // An invalid record must not prevent other documents from downloading.
+        debugPrint('Could not download WebDAV document $id: $e');
+      }
     }
   }
 
   @override
   Future<void> queueFileSync(WritingFile file, SyncOperationType type) async {
-    try {
-      await _queueService.enqueue(
-        file.id,
-        type,
-        metadata: {
-          'name': file.name,
-          'lastModified': file.lastModified.toIso8601String(),
-        },
-      );
-
-      debugPrint('📝 Queued ${type.name} operation for file ${file.id}');
-
-      if (await isOnline) {
-        await processSyncQueue();
-      } else {
-        _updateStatus(SyncStatus.pending);
-      }
-    } catch (e) {
-      debugPrint('❌ Error queuing file sync: $e');
-      _updateStatus(SyncStatus.error);
-    }
+    await _queueService.enqueue(file.id, type);
+    await processSyncQueue();
   }
 
   @override
   Future<void> processSyncQueue() async {
-    final config = await _ensureConfigLoaded();
-    if (config == null) {
-      debugPrint('⚠️ WebDAV not configured, skipping sync');
-      return;
-    }
-
-    if (!await isOnline) {
-      debugPrint('⚠️ Device is offline, skipping sync');
-      _updateStatus(SyncStatus.pending);
-      return;
-    }
-
+    if (_processing != null) return _processing;
+    _processing = _process();
     try {
-      _updateStatus(SyncStatus.syncing);
+      await _processing;
+    } finally {
+      _processing = null;
+    }
+  }
 
-      final retryableOps = await _queueService.getRetryableOperations();
+  Future<void> _process() async {
+    final config = await _loadConfig();
+    if (config == null) return;
+    if (!await isOnline) {
+      _status(SyncStatus.pending);
+      return;
+    }
+    _status(SyncStatus.syncing);
+    try {
+      await _client(config).mkdirAll(_remoteDir);
+      for (final operation in await _queueService.getRetryableOperations()) {
+        try {
+          await _syncOperation(config, operation);
+          await _queueService.dequeue(operation.id);
+        } catch (e) {
+          await _queueService.markAttempted(operation.id,
+              errorMessage: e.toString());
+          debugPrint('WebDAV sync failed for ${operation.fileId}: $e');
+        }
+      }
+      final remaining = await _queueService.getQueue();
+      _status(remaining.isEmpty ? SyncStatus.synced : SyncStatus.pending);
+    } catch (e) {
+      _status(SyncStatus.error);
+      debugPrint('WebDAV sync failed: $e');
+    }
+  }
 
-      if (retryableOps.isEmpty) {
-        debugPrint('✅ No operations to sync');
-        _updateStatus(SyncStatus.synced);
+  Future<void> _syncOperation(
+      WebDavConfig config, SyncOperation operation) async {
+    final storage = StorageService.create();
+    final record = await storage.readDocument(operation.fileId);
+    if (record == null) throw StateError('Local document is missing');
+    final meta = Map<String, dynamic>.from(record['metadata'] as Map);
+    if ((meta['pendingSync'] as Map?)?['id'] != operation.id) return;
+    final local = WritingFile.fromJson(
+        {...meta, 'id': operation.fileId, 'content': record['content']});
+    final remote = await _readRemote(config, local.id);
+    final other = remote.file;
+    if (other != null &&
+        other.snapshot != local.snapshot &&
+        meta['remoteSnapshot'] != other.snapshot) {
+      // With no common revision, preserve the losing text before selecting a
+      // winner. Deletions win to prevent stale devices resurrecting documents.
+      final remoteWins = other.isDeleted ||
+          !local.isDeleted && other.lastModified.isAfter(local.lastModified);
+      final loser = remoteWins ? local : other;
+      if (!loser.isDeleted &&
+          loser.content != (remoteWins ? other.content : local.content) &&
+          (loser.content?.isNotEmpty ?? false)) {
+        await _conflicts.createBackup(loser, 'conflict');
+      }
+      if (remoteWins) {
+        await other.saveRemote(expectedOperationId: operation.id);
         return;
       }
-
-      debugPrint('🔄 Processing ${retryableOps.length} sync operations');
-
-      int successCount = 0;
-      int failureCount = 0;
-
-      for (final operation in retryableOps) {
-        try {
-          final success = await _processSingleOperation(operation);
-          if (success) {
-            successCount++;
-            await _queueService.dequeue(operation.id);
-          } else {
-            failureCount++;
-            await _queueService.markAttempted(operation.id, errorMessage: 'Sync failed');
-          }
-        } catch (e) {
-          failureCount++;
-          await _queueService.markAttempted(operation.id, errorMessage: e.toString());
-          debugPrint('❌ Error processing operation ${operation.id}: $e');
-        }
-      }
-
-      debugPrint('📊 Sync complete: $successCount succeeded, $failureCount failed');
-
-      if (failureCount == 0) {
-        _updateStatus(SyncStatus.synced);
-      } else if (successCount == 0) {
-        _updateStatus(SyncStatus.error);
-      } else {
-        _updateStatus(SyncStatus.pending);
-      }
-    } catch (e) {
-      debugPrint('❌ Error processing sync queue: $e');
-      _updateStatus(SyncStatus.error);
     }
-  }
-
-  Future<bool> _processSingleOperation(SyncOperation operation) async {
-    switch (operation.type) {
-      case SyncOperationType.create:
-      case SyncOperationType.update:
-        return await _syncFileWithConflictResolution(operation.fileId);
-      case SyncOperationType.delete:
-        try {
-          await deleteFile(operation.fileId);
-          return true;
-        } catch (e) {
-          return false;
-        }
-    }
-  }
-
-  Future<bool> _syncFileWithConflictResolution(String fileId) async {
-    final config = _cachedConfig;
-    if (config == null) return false;
-
-    try {
-      final storage = StorageService.create();
-      final metadata = await storage.getMetadata(fileId);
-      if (metadata == null) {
-        debugPrint('⚠️ No metadata found for file $fileId');
-        return false;
+    if (other?.snapshot != local.snapshot) {
+      // Refuse to overwrite a concurrent remote write. The unchanged operation
+      // remains pending and is re-evaluated on the next attempt.
+      if (other != null && remote.etag == null) {
+        throw StateError(
+            'The WebDAV server must supply ETags for safe updates');
       }
-
-      final localFile = WritingFile(
-        id: fileId,
-        name: metadata['name'] ?? '',
-        lastModified: DateTime.parse(metadata['lastModified']),
-      );
-      await localFile.readContent();
-
-      final client = _client(config);
-      await _ensureRemoteDir(client);
-      final remoteFile = await _readRemoteFile(client, fileId);
-
-      if (remoteFile != null) {
-        final hasConflict = _conflictService.hasConflict(localFile, remoteFile);
-        if (hasConflict) {
-          debugPrint('⚠️ Conflict detected for file $fileId');
-          await _conflictService.createBackup(remoteFile, 'remote');
-
-          final resolved = await _conflictService.resolveConflict(
-            localFile: localFile,
-            remoteFile: remoteFile,
-            strategy: ConflictResolution.newerWins,
-          );
-
-          if (resolved.id == remoteFile.id) {
-            await localFile.writeContent(remoteFile.content ?? '');
-            debugPrint('✅ Conflict resolved: remote version kept');
-            return true;
-          }
-        }
+      final result = await _request(config, local.id, 'PUT',
+          data: local.snapshot,
+          headers: other == null
+              ? {'If-None-Match': '*'}
+              : {'If-Match': remote.etag!});
+      if (result.statusCode == 412) {
+        throw StateError('Document changed on server; retrying');
       }
-
-      final content = await localFile.readContent();
-      final payload = utf8.encode(json.encode({
-        'id': fileId,
-        'name': metadata['name'],
-        'content': content,
-        'lastModified': metadata['lastModified'],
-      }));
-
-      await client.write('$_remoteDir$fileId.json', Uint8List.fromList(payload))
-          .timeout(const Duration(seconds: 15));
-
-      debugPrint('✅ Synced file $fileId to WebDAV');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error syncing file to WebDAV: $e');
-      return false;
+      if (result.statusCode == 404) {
+        throw StateError('Remote directory is missing');
+      }
     }
+    await storage.updateMetadata(local.id, (metadata) {
+      metadata['remoteSnapshot'] = local.snapshot;
+      // dequeue(operation.id) only acknowledges this exact version.
+    });
   }
 
   @override
-  Future<Map<String, dynamic>> getSyncStats() async {
-    return await _queueService.getQueueStats();
-  }
-
+  Future<Map<String, dynamic>> getSyncStats() => _queueService.getQueueStats();
   @override
   Future<void> clearSyncData() async {
-    await _queueService.clearAll();
-    _updateStatus(SyncStatus.idle);
+    _status(SyncStatus.idle);
   }
 
   @override
   void dispose() {
+    _http.close();
     _statusController.close();
   }
 }

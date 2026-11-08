@@ -20,7 +20,7 @@ permissions:
   actions: read
 
 env:
-  FLUTTER_VERSION: '3.47.4'
+  FLUTTER_VERSION: '3.47.9'
 
 jobs:
   # Job 1: Android Screenshots
@@ -143,7 +143,7 @@ jobs:
     - name: Install Linux dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb
+        sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev xvfb
     
     - name: Enable Linux desktop
       run: flutter config --enable-linux-desktop

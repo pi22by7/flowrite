@@ -1,59 +1,42 @@
-import 'dart:io';
-import 'package:archive/archive_io.dart';
-import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/writing_file.dart';
 
-/// Exports writing files to a plain-text format the user can share or save
-/// anywhere via the OS share sheet.
+/// Byte-based exports work on desktop and in browsers (including downloads when
+/// the browser's native share API is unavailable).
 class ExportService {
   Future<void> exportFile(WritingFile file) async {
-    final content = await file.readContent();
-    final tempDir = await getTemporaryDirectory();
-    final safeName = _sanitizeFileName(file.name);
-    final tempFile = File('${tempDir.path}/$safeName.txt');
-    await tempFile.writeAsString(content);
-
-    try {
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(tempFile.path, name: '$safeName.txt')]),
-      );
-    } finally {
-      if (await tempFile.exists()) {
-        await tempFile.delete();
-      }
-    }
+    final name = '${_sanitizeFileName(file.name)}.txt';
+    await SharePlus.instance.share(ShareParams(files: [
+      XFile.fromData(Uint8List.fromList(utf8.encode(await file.readContent())),
+          mimeType: 'text/plain', name: name)
+    ], fileNameOverrides: [
+      name
+    ]));
   }
 
   Future<void> exportAll(List<WritingFile> files) async {
-    final tempDir = await getTemporaryDirectory();
-    final zipPath = '${tempDir.path}/flowrite_export.zip';
-    final zipFile = File(zipPath);
-
-    final encoder = ZipFileEncoder();
-    encoder.create(zipPath);
-
-    try {
-      for (final file in files) {
-        final content = await file.readContent();
-        final safeName = _sanitizeFileName(file.name);
-        encoder.addArchiveFile(
-          ArchiveFile('$safeName.txt', content.length, content.codeUnits),
-        );
+    final archive = Archive();
+    final names = <String>{};
+    for (final file in files.where((file) => !file.isDeleted)) {
+      final base = _sanitizeFileName(file.name);
+      var name = '$base.txt';
+      var count = 2;
+      while (!names.add(name)) {
+        name = '$base (${count++}).txt';
       }
-    } finally {
-      encoder.close();
+      final bytes = utf8.encode(await file.readContent());
+      archive.addFile(ArchiveFile(name, bytes.length, bytes));
     }
-
-    try {
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(zipFile.path, name: 'flowrite_export.zip')]),
-      );
-    } finally {
-      if (await zipFile.exists()) {
-        await zipFile.delete();
-      }
-    }
+    const name = 'flowrite_export.zip';
+    await SharePlus.instance.share(ShareParams(files: [
+      XFile.fromData(Uint8List.fromList(ZipEncoder().encode(archive)),
+          mimeType: 'application/zip', name: name)
+    ], fileNameOverrides: [
+      name
+    ]));
   }
 
   String _sanitizeFileName(String name) {

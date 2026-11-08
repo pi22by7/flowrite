@@ -27,7 +27,8 @@ class EditorScreen extends StatefulWidget {
   State<EditorScreen> createState() => _EditorScreenState();
 }
 
-class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderStateMixin {
+class _EditorScreenState extends State<EditorScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final SyllableService _syllableService = SyllableService();
   final RhymeService _rhymeService = RhymeService();
   late final FileService _fileService;
@@ -40,6 +41,9 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   List<int> _syllableCounts = [];
   int _currentLine = 0;
   bool _isSaving = false;
+  bool _leaving = false;
+  bool _isLoadingContent = true;
+  bool _loadFailed = false;
   bool _hasUnsavedChanges = false;
   bool _isAutoSaving = false;
   String _originalTitle = '';
@@ -64,6 +68,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _fileService = FileService(
       syncProvider: Provider.of<SyncProvider>(context, listen: false),
@@ -82,13 +87,39 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     );
 
     _controller.spanBuilder = _buildColoredTextSpan;
-    _loadContent();
+    _loadContent().catchError((Object error) {
+      debugPrint('Could not open document: $error');
+      if (mounted) {
+        setState(() {
+          _isLoadingContent = false;
+          _loadFailed = true;
+        });
+      }
+    });
     _controller.addListener(_onTextChanged);
     _controller.addListener(_onSelectionChanged);
     _titleController.addListener(_onTitleChanged);
     _focusNode.addListener(_onBodyFocusChanged);
     _titleFocusNode.addListener(_onTitleFocusChanged);
     _initializeRhymeService();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      unawaited(_flushPendingSave());
+    }
+  }
+
+  Future<void> _flushPendingSave() async {
+    _autosaveTimer?.cancel();
+    await _currentSaveOperation;
+    if (mounted && _hasUnsavedChanges) {
+      _currentSaveOperation = _autoSave();
+      await _currentSaveOperation;
+    }
   }
 
   void _onBodyFocusChanged() {
@@ -145,10 +176,13 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     _controller.text = _lyrics.text;
     _originalTitle = title;
     _originalContent = _lyrics.encode();
+    _isLoadingContent = false;
+    _hasUnsavedChanges = false;
     _updateSyllableCounts();
   }
 
   void _onTextChanged() {
+    if (_isLoadingContent) return;
     if (_lyrics.text != _controller.text) _editingChord = null;
     _lyrics = _controller.updateDocument(_lyrics);
     _rhymeService.reset();
@@ -159,6 +193,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   }
 
   void _onTitleChanged() {
+    if (_isLoadingContent) return;
     _checkForChanges();
     _startAutosaveTimer();
   }
@@ -187,7 +222,9 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     setState(() {
       _syllableCounts = _controller.text
           .split('\n')
-          .map((line) => isMarkdownHeading(line) ? 0 : _syllableService.countSyllablesInText(line))
+          .map((line) => isMarkdownHeading(line)
+              ? 0
+              : _syllableService.countSyllablesInText(line))
           .toList();
     });
   }
@@ -207,17 +244,20 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
 
   void _onSelectionChanged() {
     _updateCurrentLine();
-    
+
     // Cancel any existing timer
     _selectionTimer?.cancel();
-    
+
     // If popup is open and we have a valid selection, update it
     if (_showRhymePopup) {
       final selection = _controller.selection;
       if (selection.isValid && !selection.isCollapsed) {
-        final selectedText = _controller.text.substring(selection.start, selection.end).trim();
-        if (selectedText.isNotEmpty && RegExp(r'[a-zA-Z]').hasMatch(selectedText)) {
-          debugPrint('🔄 Selection changed while popup open: "$_selectedText" -> "$selectedText"');
+        final selectedText =
+            _controller.text.substring(selection.start, selection.end).trim();
+        if (selectedText.isNotEmpty &&
+            RegExp(r'[a-zA-Z]').hasMatch(selectedText)) {
+          debugPrint(
+              '🔄 Selection changed while popup open: "$_selectedText" -> "$selectedText"');
           if (_selectedText != selectedText) {
             // Update popup with new selection
             _showRhymeDictionary(selectedText, selection);
@@ -231,7 +271,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
         _showRhymePopup = false;
       });
     }
-    
+
     // Trigger rebuild to update rhyme button highlighting
     if (mounted) {
       setState(() {});
@@ -241,18 +281,18 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   void _showRhymeDictionary(String text, TextSelection selection) {
     final screenSize = MediaQuery.of(context).size;
     final isTablet = screenSize.width > 600;
-    
+
     // Responsive popup dimensions
     final popupWidth = (screenSize.width * 0.9).clamp(280.0, 400.0);
     final maxPopupHeight = screenSize.height * 0.6;
-    
+
     double popupX, popupY;
-    
+
     if (isTablet) {
       // Tablet: Show to the side if possible, otherwise center
       popupX = screenSize.width * 0.6;
       popupY = screenSize.height * 0.2;
-      
+
       // Adjust if would go off screen
       if (popupX + popupWidth > screenSize.width - 20) {
         popupX = (screenSize.width - popupWidth) / 2;
@@ -262,11 +302,11 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
       popupX = (screenSize.width - popupWidth) / 2;
       popupY = screenSize.height * 0.4;
     }
-    
+
     // Ensure popup stays within bounds
     popupX = popupX.clamp(10.0, screenSize.width - popupWidth - 10);
     popupY = popupY.clamp(100.0, screenSize.height - 100.0);
-    
+
     // Adjust if would exceed max height
     if (popupY + maxPopupHeight > screenSize.height - 60) {
       popupY = screenSize.height - maxPopupHeight - 60;
@@ -312,8 +352,11 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     final selection = _controller.selection;
     if (!selection.isValid || selection.isCollapsed) return;
 
-    final selectedText = _controller.text.substring(selection.start, selection.end).trim();
-    if (selectedText.isEmpty || !RegExp(r'[a-zA-Z]').hasMatch(selectedText)) return;
+    final selectedText =
+        _controller.text.substring(selection.start, selection.end).trim();
+    if (selectedText.isEmpty || !RegExp(r'[a-zA-Z]').hasMatch(selectedText)) {
+      return;
+    }
 
     _showRhymeDictionary(selectedText, selection);
   }
@@ -326,7 +369,9 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
 
     // Map visual lines to logical lines
     int visualLineIndex = 0;
-    for (int logicalLineIndex = 0; logicalLineIndex < logicalLines.length; logicalLineIndex++) {
+    for (int logicalLineIndex = 0;
+        logicalLineIndex < logicalLines.length;
+        logicalLineIndex++) {
       if (visualLineIndex >= lineMetrics.length) break;
 
       // Calculate starting offset for this logical line
@@ -361,7 +406,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   }
 
   TextSpan _buildColoredTextSpan(String text, TextStyle baseStyle) =>
-      buildLyricMarkdownSpan(text, baseStyle, lyricLineBuilder: _colorWordsInLine);
+      buildLyricMarkdownSpan(text, baseStyle,
+          lyricLineBuilder: _colorWordsInLine);
 
   List<TextSpan> _colorWordsInLine(String line, TextStyle baseStyle) {
     final List<TextSpan> spans = [];
@@ -391,18 +437,26 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
         // Check if this word matches the selected text for shimmer effect
         final isSelectedWord = _showRhymePopup &&
             _selectedText.isNotEmpty &&
-            letters == _selectedText.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z]'), '');
+            letters ==
+                _selectedText
+                    .toLowerCase()
+                    .replaceAll(RegExp(r'[^a-zA-Z]'), '');
 
         // Apply shimmer effect to selected word
         if (isSelectedWord) {
           final shimmerValue = _shimmerAnimation.value;
           // Create a gentle shimmer that oscillates the alpha
-          final shimmerAlpha = 0.15 + (0.15 * ((shimmerValue < 0.5 ? shimmerValue * 2 : (1 - shimmerValue) * 2)));
+          final shimmerAlpha = 0.15 +
+              (0.15 *
+                  ((shimmerValue < 0.5
+                      ? shimmerValue * 2
+                      : (1 - shimmerValue) * 2)));
           spans.add(TextSpan(
             text: word,
             style: baseStyle.copyWith(
               color: color,
-              backgroundColor: colorScheme.primary.withValues(alpha: shimmerAlpha),
+              backgroundColor:
+                  colorScheme.primary.withValues(alpha: shimmerAlpha),
             ),
           ));
         } else {
@@ -419,14 +473,33 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingContent) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_loadFailed) {
+      return Scaffold(
+          appBar: AppBar(title: const Text('Unable to open song')),
+          body: const Center(
+              child: Text(
+                  'Try reopening this song. Your saved data has not been changed.')));
+    }
     return PopScope(
-      canPop: true,
+      canPop: !_hasUnsavedChanges && _currentSaveOperation == null,
       onPopInvokedWithResult: (bool didPop, Object? result) async {
-        // Final fallback - only save if we still have unsaved changes
-        // (onBlur should have handled most cases already)
-        if (didPop && _hasUnsavedChanges && _currentSaveOperation == null) {
-          // Quick fire-and-forget save, don't wait for it
-          _autoSave();
+        if (didPop || _leaving) return;
+        _leaving = true;
+        try {
+          await _flushPendingSave();
+          if (!context.mounted) return;
+          if (!_hasUnsavedChanges) {
+            Navigator.pop(context);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    'Could not save locally. Please save before leaving.')));
+          }
+        } finally {
+          _leaving = false;
         }
       },
       child: LayoutBuilder(
@@ -491,7 +564,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                         // Rhyme dictionary popup overlay
                         if (_showRhymePopup)
                           RhymeDictionaryPopup(
-                            key: ValueKey(_selectedText), // Force rebuild when text changes
+                            key: ValueKey(
+                                _selectedText), // Force rebuild when text changes
                             selectedText: _selectedText,
                             position: _popupPosition,
                             onClose: _closeRhymePopup,
@@ -537,7 +611,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                       border: Border.all(
                         color: colorScheme.outline.withValues(alpha: 0.06),
                       ),
-                      color: colorScheme.surfaceContainerLowest.withValues(alpha: 0.3),
+                      color: colorScheme.surfaceContainerLowest
+                          .withValues(alpha: 0.3),
                     ),
                     child: Icon(
                       Icons.arrow_back_rounded,
@@ -561,10 +636,11 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                     const SizedBox(height: 2),
                     Consumer<SyncProvider>(
                       builder: (context, syncProvider, child) {
-                        String statusText = '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}';
+                        String statusText =
+                            '${_syllableCounts.length} ${_syllableCounts.length == 1 ? 'line' : 'lines'}';
 
                         // Add sync status if signed in
-                        if (syncProvider.isSignedIn) {
+                        if (syncProvider.isCloudConfigured) {
                           switch (syncProvider.syncStatus) {
                             case SyncStatus.syncing:
                               statusText += ' • Syncing...';
@@ -585,9 +661,11 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
 
                         return Text(
                           statusText,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurface.withValues(alpha: 0.5),
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.5),
+                                  ),
                         );
                       },
                     ),
@@ -601,7 +679,9 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                     message: 'Attach chord to lyric',
                     child: _buildHeaderButton(
                       icon: Icons.music_note_rounded,
-                      onPressed: _controller.selection.isValid ? () => _editChord() : null,
+                      onPressed: _controller.selection.isValid
+                          ? () => _editChord()
+                          : null,
                       colorScheme: colorScheme,
                     ),
                   ),
@@ -610,7 +690,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                     icon: Icons.menu_book_rounded,
                     onPressed: _showRhymePopupManually,
                     colorScheme: colorScheme,
-                    isHighlighted: _controller.selection.isValid && !_controller.selection.isCollapsed,
+                    isHighlighted: _controller.selection.isValid &&
+                        !_controller.selection.isCollapsed,
                   ),
                   const SizedBox(width: 8),
                   _buildHeaderButton(
@@ -625,7 +706,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
                         : _hasUnsavedChanges
                             ? Icons.circle_outlined
                             : Icons.check_rounded,
-                    onPressed: (_isSaving || _isAutoSaving) ? null : _saveContent,
+                    onPressed:
+                        (_isSaving || _isAutoSaving) ? null : _saveContent,
                     colorScheme: colorScheme,
                     isLoading: _isSaving || _isAutoSaving,
                     showBadge: _hasUnsavedChanges && !_isAutoSaving,
@@ -665,7 +747,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: isHighlighted 
+                color: isHighlighted
                     ? colorScheme.primary.withValues(alpha: 0.2)
                     : onPressed != null
                         ? colorScheme.primary.withValues(alpha: 0.1)
@@ -744,179 +826,201 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              // Song title and section formatting.
-              Row(children: [
-              Expanded(child: TextField(
-                controller: _titleController,
-                focusNode: _titleFocusNode,
-                style: titleStyle,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Song Title',
-                  hintStyle: titleStyle.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                // Song title and section formatting.
+                Row(children: [
+                  Expanded(
+                      child: TextField(
+                    controller: _titleController,
+                    focusNode: _titleFocusNode,
+                    style: titleStyle,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Song Title',
+                      hintStyle: titleStyle.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.4),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
+                    ),
+                    maxLines: 1,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _focusNode.requestFocus(),
+                  )),
+                  PopupMenuButton<String>(
+                    tooltip: 'Add section heading',
+                    icon: Icon(Icons.title_rounded, color: colorScheme.primary),
+                    onSelected: _insertHeading,
+                    itemBuilder: (context) => [
+                      for (final section in [
+                        'Verse',
+                        'Chorus',
+                        'Pre-Chorus',
+                        'Bridge',
+                        'Intro',
+                        'Outro'
+                      ])
+                        PopupMenuItem(value: section, child: Text(section)),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                          value: '_format',
+                          child: Text('Turn current line into heading')),
+                      const PopupMenuItem(
+                          value: '_remove',
+                          child: Text('Remove heading formatting')),
+                    ],
                   ),
-                  contentPadding: EdgeInsets.zero,
-                  isDense: true,
-                ),
-                maxLines: 1,
-                textInputAction: TextInputAction.next,
-                onSubmitted: (_) => _focusNode.requestFocus(),
-              )),
-              PopupMenuButton<String>(
-                tooltip: 'Add section heading',
-                icon: Icon(Icons.title_rounded, color: colorScheme.primary),
-                onSelected: _insertHeading,
-                itemBuilder: (context) => [
-                  for (final section in ['Verse', 'Chorus', 'Pre-Chorus', 'Bridge', 'Intro', 'Outro'])
-                    PopupMenuItem(value: section, child: Text(section)),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(value: '_format', child: Text('Turn current line into heading')),
-                  const PopupMenuItem(value: '_remove', child: Text('Remove heading formatting')),
-                ],
-              ),
-              ]),
+                ]),
 
-              // Ornamental divider - poetic and elegant
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 24),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.transparent,
-                              colorScheme.outline.withValues(alpha: 0.2),
-                              colorScheme.primary.withValues(alpha: 0.3),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Icon(
-                        Icons.fiber_manual_record,
-                        size: 4,
-                        color: colorScheme.primary.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              colorScheme.primary.withValues(alpha: 0.3),
-                              colorScheme.outline.withValues(alpha: 0.2),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Body content editor
-              LayoutBuilder(builder: (context, bodyConstraints) {
-                final lyricWidth = max(0.0, bodyConstraints.maxWidth - 50);
-                final scaler = MediaQuery.textScalerOf(context);
-                final hasChords = settings.showChords && (_lyrics.chords.isNotEmpty || _editingChord != null);
-                final painter = TextPainter(
-                  text: _buildColoredTextSpan(_controller.text, lyricLayoutStyle(textStyle, hasChords: hasChords, textScaler: scaler)),
-                  textDirection: TextDirection.ltr,
-                  textScaler: MediaQuery.textScalerOf(context),
-                  strutStyle: lyricStrutStyle(textStyle, hasChords: hasChords, textScaler: scaler),
-                )..layout(maxWidth: lyricParagraphWidth(lyricWidth));
-                final lineOffsets = _getLineOffsets(painter);
-                final metrics = painter.computeLineMetrics();
-                final inset = hasChords && metrics.isNotEmpty
-                    ? lyricChordTopInset(metrics.first.baseline, textStyle, scaler) : 0.0;
-                for (final line in lineOffsets) {
-                  line['offset'] = (line['offset'] as double) + inset;
-                }
-                painter.dispose();
-                return Stack(
-                children: [
-                  SizedBox(
-                    width: lyricWidth,
-                    child: LyricChordLayer(
-                      visible: settings.showChords,
-                      document: _lyrics,
-                      style: textStyle,
-                      onEdit: (chord) => _editChord(chord),
-                      onMove: _moveChord,
-                      editingChord: _editingChord,
-                      onCommit: _commitChord,
-                      onDraftChanged: (label) => _chordDraft = label,
-                      onCancel: () => setState(() => _editingChord = null),
-                      child: LyricTextField(
-                        hasChords: hasChords,
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        style: textStyle,
-                        animation: _showRhymePopup ? _shimmerAnimation : null,
-                        contextMenuBuilder: (context, editableTextState) =>
-                          AdaptiveTextSelectionToolbar.buttonItems(
-                            anchors: editableTextState.contextMenuAnchors,
-                            buttonItems: [
-                              ...editableTextState.contextMenuButtonItems,
-                              ContextMenuButtonItem(
-                                label: 'Section heading',
-                                onPressed: () {
-                                  editableTextState.hideToolbar();
-                                  _insertHeading('_format');
-                                },
-                              ),
-                              ContextMenuButtonItem(
-                                label: 'Attach chord',
-                                onPressed: () {
-                                  editableTextState.hideToolbar();
-                                  _editChord();
-                                },
-                              ),
-                            ],
-                          ),
-                      ),
-                    ),
-                  ),
-                  if (settings.showSyllables && !settings.focusMode)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: CustomPaint(
-                          painter: _SyllableCountPainter(
-                            lineOffsets: lineOffsets,
-                            syllableCounts: _syllableCounts,
-                            currentLine: _currentLine,
-                            textStyle: TextStyle(
-                              color: colorScheme.primary.withValues(alpha: 0.7),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                // Ornamental divider - poetic and elegant
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 24),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                colorScheme.outline.withValues(alpha: 0.2),
+                                colorScheme.primary.withValues(alpha: 0.3),
+                              ],
                             ),
-                            highlightColor: !hasChords
-                                ? colorScheme.primary.withValues(alpha: 0.05)
-                                : Colors.transparent,
-                            activeTextColor: colorScheme.primary,
-                            inactiveTextColor:
-                                colorScheme.onSurface.withValues(alpha: 0.3),
-                            useDotPattern: settings.syllableDotPattern,
                           ),
                         ),
                       ),
-                    ),
-                ],
-              );
-              }),
-            ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Icon(
+                          Icons.fiber_manual_record,
+                          size: 4,
+                          color: colorScheme.primary.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary.withValues(alpha: 0.3),
+                                colorScheme.outline.withValues(alpha: 0.2),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Body content editor
+                LayoutBuilder(builder: (context, bodyConstraints) {
+                  final lyricWidth = max(0.0, bodyConstraints.maxWidth - 50);
+                  final scaler = MediaQuery.textScalerOf(context);
+                  final hasChords = settings.showChords &&
+                      (_lyrics.chords.isNotEmpty || _editingChord != null);
+                  final painter = TextPainter(
+                    text: _buildColoredTextSpan(
+                        _controller.text,
+                        lyricLayoutStyle(textStyle,
+                            hasChords: hasChords, textScaler: scaler)),
+                    textDirection: TextDirection.ltr,
+                    textScaler: MediaQuery.textScalerOf(context),
+                    strutStyle: lyricStrutStyle(textStyle,
+                        hasChords: hasChords, textScaler: scaler),
+                  )..layout(maxWidth: lyricParagraphWidth(lyricWidth));
+                  final lineOffsets = _getLineOffsets(painter);
+                  final metrics = painter.computeLineMetrics();
+                  final inset = hasChords && metrics.isNotEmpty
+                      ? lyricChordTopInset(
+                          metrics.first.baseline, textStyle, scaler)
+                      : 0.0;
+                  for (final line in lineOffsets) {
+                    line['offset'] = (line['offset'] as double) + inset;
+                  }
+                  painter.dispose();
+                  return Stack(
+                    children: [
+                      SizedBox(
+                        width: lyricWidth,
+                        child: LyricChordLayer(
+                          visible: settings.showChords,
+                          document: _lyrics,
+                          style: textStyle,
+                          onEdit: (chord) => _editChord(chord),
+                          onMove: _moveChord,
+                          editingChord: _editingChord,
+                          onCommit: _commitChord,
+                          onDraftChanged: (label) => _chordDraft = label,
+                          onCancel: () => setState(() => _editingChord = null),
+                          child: LyricTextField(
+                            hasChords: hasChords,
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            style: textStyle,
+                            animation:
+                                _showRhymePopup ? _shimmerAnimation : null,
+                            contextMenuBuilder: (context, editableTextState) =>
+                                AdaptiveTextSelectionToolbar.buttonItems(
+                              anchors: editableTextState.contextMenuAnchors,
+                              buttonItems: [
+                                ...editableTextState.contextMenuButtonItems,
+                                ContextMenuButtonItem(
+                                  label: 'Section heading',
+                                  onPressed: () {
+                                    editableTextState.hideToolbar();
+                                    _insertHeading('_format');
+                                  },
+                                ),
+                                ContextMenuButtonItem(
+                                  label: 'Attach chord',
+                                  onPressed: () {
+                                    editableTextState.hideToolbar();
+                                    _editChord();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (settings.showSyllables && !settings.focusMode)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: _SyllableCountPainter(
+                                lineOffsets: lineOffsets,
+                                syllableCounts: _syllableCounts,
+                                currentLine: _currentLine,
+                                textStyle: TextStyle(
+                                  color: colorScheme.primary
+                                      .withValues(alpha: 0.7),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                highlightColor: !hasChords
+                                    ? colorScheme.primary
+                                        .withValues(alpha: 0.05)
+                                    : Colors.transparent,
+                                activeTextColor: colorScheme.primary,
+                                inactiveTextColor: colorScheme.onSurface
+                                    .withValues(alpha: 0.3),
+                                useDotPattern: settings.syllableDotPattern,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -945,7 +1049,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     _chordsChanged([
       for (final existing in _lyrics.chords)
         if (existing != chord && existing.start != offset) existing,
-      LyricChord(offset, LyricDocument.wordEnd(_controller.text, offset), chord.label),
+      LyricChord(
+          offset, LyricDocument.wordEnd(_controller.text, offset), chord.label),
     ]);
   }
 
@@ -954,16 +1059,20 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
     if (chord == null && !selection.isValid) return;
     var start = chord?.start ?? selection.start;
     if (chord == null && !selection.isCollapsed) {
-      while (start < selection.end && RegExp(r'\s').hasMatch(_controller.text[start])) {
+      while (start < selection.end &&
+          RegExp(r'\s').hasMatch(_controller.text[start])) {
         start++;
       }
     }
     final snapshot = _controller.text;
-    if (start >= snapshot.length || RegExp(r'\s').hasMatch(snapshot[start])) return;
+    if (start >= snapshot.length || RegExp(r'\s').hasMatch(snapshot[start])) {
+      return;
+    }
     chord ??= _lyrics.chords.where((c) => c.start == start).firstOrNull;
     context.read<SettingsProvider>().setShowChords(true);
     setState(() {
-      _editingChord = chord ?? LyricChord(start, LyricDocument.wordEnd(snapshot, start), '');
+      _editingChord = chord ??
+          LyricChord(start, LyricDocument.wordEnd(snapshot, start), '');
       _chordDraft = _editingChord!.label;
     });
   }
@@ -1000,14 +1109,14 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
   }
 
   void _handleBackPress() {
-    Navigator.pop(context);
+    Navigator.maybePop(context);
   }
 
   Future<void> _saveContent() async {
     // Wait for any ongoing save operation to complete first
     if (_currentSaveOperation != null) {
       await _currentSaveOperation;
-      return; // The ongoing operation will have saved our changes
+      if (!_hasUnsavedChanges || !mounted) return;
     }
 
     _currentSaveOperation = _performSave(showFeedback: true);
@@ -1048,8 +1157,8 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
         // don't mark those newer edits as saved, or they'd never get
         // written (the next autosave won't fire because _hasUnsavedChanges
         // would already read false).
-        final editedDuringSave = _titleController.text.trim() != title ||
-            _lyrics.encode() != body;
+        final editedDuringSave =
+            _titleController.text.trim() != title || _lyrics.encode() != body;
 
         if (editedDuringSave) {
           _startAutosaveTimer();
@@ -1088,9 +1197,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
               ],
             ),
             duration: const Duration(seconds: 2),
-            backgroundColor: success
-                ? colorScheme.primary
-                : colorScheme.error,
+            backgroundColor: success ? colorScheme.primary : colorScheme.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -1122,6 +1229,7 @@ class _EditorScreenState extends State<EditorScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _autosaveTimer?.cancel();
     _selectionTimer?.cancel();
     _shimmerController.dispose();
@@ -1205,7 +1313,8 @@ class _SyllableCountPainter extends CustomPainter {
           ..style = PaintingStyle.fill;
 
         // Draw shape made of dots based on syllable count
-        _drawSyllableShape(canvas, syllableCount, centerX, centerY, dotSize, dotPaint, isActive);
+        _drawSyllableShape(canvas, syllableCount, centerX, centerY, dotSize,
+            dotPaint, isActive);
       } else {
         // For longer lines, show number instead
         final textSpan = TextSpan(
@@ -1312,20 +1421,26 @@ class _SyllableCountPainter extends CustomPainter {
 
       case 10:
         // 10 dots - two pentagons
-        _drawDotsInCircle(canvas, x, y - spacing, radius, spacing * 1.5, 5, paint);
-        _drawDotsInCircle(canvas, x, y + spacing, radius, spacing * 1.5, 5, paint);
+        _drawDotsInCircle(
+            canvas, x, y - spacing, radius, spacing * 1.5, 5, paint);
+        _drawDotsInCircle(
+            canvas, x, y + spacing, radius, spacing * 1.5, 5, paint);
         break;
 
       case 11:
         // 11 dots - hexagon + pentagon
-        _drawDotsInCircle(canvas, x, y - spacing, radius, spacing * 1.4, 6, paint);
-        _drawDotsInCircle(canvas, x, y + spacing, radius, spacing * 1.4, 5, paint);
+        _drawDotsInCircle(
+            canvas, x, y - spacing, radius, spacing * 1.4, 6, paint);
+        _drawDotsInCircle(
+            canvas, x, y + spacing, radius, spacing * 1.4, 5, paint);
         break;
 
       case 12:
         // 12 dots - two hexagons
-        _drawDotsInCircle(canvas, x, y - spacing, radius, spacing * 1.4, 6, paint);
-        _drawDotsInCircle(canvas, x, y + spacing, radius, spacing * 1.4, 6, paint);
+        _drawDotsInCircle(
+            canvas, x, y - spacing, radius, spacing * 1.4, 6, paint);
+        _drawDotsInCircle(
+            canvas, x, y + spacing, radius, spacing * 1.4, 6, paint);
         break;
 
       default:

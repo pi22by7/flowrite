@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import '../models/writing_file.dart';
 import '../models/sync_operation.dart';
+import 'storage_service.dart';
 
 /// Service for resolving conflicts between local and remote versions
 class ConflictResolutionService {
@@ -81,9 +84,8 @@ class ConflictResolutionService {
       'remoteModified': remoteFile.lastModified.toIso8601String(),
       'localContentLength': localFile.content?.length ?? 0,
       'remoteContentLength': remoteFile.content?.length ?? 0,
-      'timeDifferenceSeconds': localFile.lastModified
-          .difference(remoteFile.lastModified)
-          .inSeconds,
+      'timeDifferenceSeconds':
+          localFile.lastModified.difference(remoteFile.lastModified).inSeconds,
     };
   }
 
@@ -131,8 +133,11 @@ class ConflictResolutionService {
   /// Create a backup copy before resolving conflict
   Future<void> createBackup(WritingFile file, String suffix) async {
     try {
+      final id =
+          '${file.id}_backup_${sha256.convert(utf8.encode(file.snapshot))}';
+      if (await StorageService.create().getMetadata(id) != null) return;
       final backupFile = WritingFile(
-        id: '${file.id}_backup_$suffix',
+        id: id,
         name: '${file.name} (Backup $suffix)',
         content: file.content,
         lastModified: DateTime.now(),
@@ -142,6 +147,7 @@ class ConflictResolutionService {
       debugPrint('💾 Created backup: ${backupFile.id}');
     } catch (e) {
       debugPrint('❌ Error creating backup: $e');
+      rethrow;
     }
   }
 }
